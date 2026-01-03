@@ -1,4 +1,5 @@
 import express from "express";
+app.use(cors());
 import { config } from "./config/env.js";
 import keywordRoutes from "./routes/keyword.routes.js";
 
