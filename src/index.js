@@ -1,9 +1,11 @@
 import express from "express";
-app.use(cors());
+import cors from "cors";
 import { config } from "./config/env.js";
 import keywordRoutes from "./routes/keyword.routes.js";
 
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
