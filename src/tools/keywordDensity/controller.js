@@ -1,4 +1,5 @@
-import { analyzeKeywordDensity } from "./service.js";
+import analyzeKeywordDensity from "./service.js";
+
 
 export function keywordDensityController(req, res) {
   const { text } = req.body;
