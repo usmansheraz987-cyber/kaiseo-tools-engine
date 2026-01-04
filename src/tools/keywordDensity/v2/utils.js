@@ -1,3 +1,9 @@
+import { STOP_WORDS } from "./stopwords.js";
+export function isMeaningful(keyword) {
+  const parts = keyword.split(" ");
+  return parts.some(p => !STOP_WORDS.has(p));
+}
+
 export function cleanText(text) {
   return text
     .toLowerCase()
@@ -5,6 +11,7 @@ export function cleanText(text) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
 
 export function generateNgrams(words, n) {
   const grams = [];

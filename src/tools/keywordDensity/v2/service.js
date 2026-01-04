@@ -3,7 +3,8 @@ import {
   generateNgrams,
   countOccurrences,
   classify,
-  extractTextFromUrl
+  extractTextFromUrl,
+  isMeaningful
 } from "./utils.js";
 
 export default async function analyzeKeywordDensityV2({ text, targets, url }) {
@@ -19,7 +20,7 @@ export default async function analyzeKeywordDensityV2({ text, targets, url }) {
   }
 
   const cleaned = cleanText(inputText);
-  const words = cleaned.split(" ");
+  const words = cleaned.split(" ").filter(Boolean);
   const totalWords = words.length;
 
   const targetsSet = Array.isArray(targets)
@@ -28,7 +29,7 @@ export default async function analyzeKeywordDensityV2({ text, targets, url }) {
 
   const results = [];
 
-  // 1-gram, 2-gram, 3-gram
+  // Generate 1-gram, 2-gram, 3-gram
   for (const n of [1, 2, 3]) {
     const grams = generateNgrams(words, n);
     const freq = countOccurrences(grams);
@@ -50,7 +51,22 @@ export default async function analyzeKeywordDensityV2({ text, targets, url }) {
     }
   }
 
-  const summary = results.reduce(
+  // STEP 3 — Stop-word filtering + phrase-first sorting
+  const meaningful = results.filter(r => isMeaningful(r.keyword));
+  const noise = results.filter(r => !isMeaningful(r.keyword));
+
+  meaningful.sort((a, b) => {
+    const aLen = a.keyword.split(" ").length;
+    const bLen = b.keyword.split(" ").length;
+
+    // phrases first: 3-word → 2-word → 1-word
+    if (aLen !== bLen) return bLen - aLen;
+
+    // then higher density
+    return b.density - a.density;
+  });
+
+  const summary = meaningful.reduce(
     (acc, r) => {
       acc[r.warning] = (acc[r.warning] || 0) + 1;
       return acc;
@@ -59,8 +75,14 @@ export default async function analyzeKeywordDensityV2({ text, targets, url }) {
   );
 
   return {
+    tool: "keyword-density-v2",
+    mode: url ? "url" : "text",
     totalWords,
-    keywords: results.sort((a, b) => b.count - a.count),
+    keywords: meaningful,
+    hidden: {
+      removed: noise.length,
+      reason: "stop-words"
+    },
     summary
   };
 }
