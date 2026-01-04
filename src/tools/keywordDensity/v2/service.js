@@ -59,6 +59,31 @@ export default async function analyzeKeywordDensityV2({ text, targets, url }) {
     const aLen = a.keyword.split(" ").length;
     const bLen = b.keyword.split(" ").length;
 
+    // STEP 4 — Target keyword boosting (TEXT + URL)
+if (targetsSet) {
+  for (const rawTarget of targetsSet) {
+    const targetWords = rawTarget.split(" ");
+    const targetGrams = generateNgrams(words, targetWords.length);
+    const targetFreq = countOccurrences(targetGrams);
+    const targetCount = targetFreq[rawTarget] || 0;
+
+    const density = Number(((targetCount / totalWords) * 100).toFixed(2));
+    const warning = classify(targetCount, density, totalWords);
+
+    const exists = meaningful.some(r => r.keyword === rawTarget);
+    if (exists) continue;
+
+    meaningful.push({
+      keyword: rawTarget,
+      count: targetCount,
+      density,
+      type: "target",
+      warning
+    });
+  }
+}
+
+
     // phrases first: 3-word → 2-word → 1-word
     if (aLen !== bLen) return bLen - aLen;
 
