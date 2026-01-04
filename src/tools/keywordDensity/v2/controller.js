@@ -1,21 +1,28 @@
 import analyzeKeywordDensityV2 from "./service.js";
 
-export function keywordDensityV2Controller(req, res) {
-  const { text, targets } = req.body;
+export async function keywordDensityV2Controller(req, res) {
+  const { text, targets, url } = req.body;
 
-  if (!text) {
-    return res.status(400).json({ error: "Text is required" });
+  if (!text && !url) {
+    return res.status(400).json({ error: "Text or URL is required" });
   }
 
-  const result = analyzeKeywordDensityV2({ text, targets });
+  try {
+    const result = await analyzeKeywordDensityV2({ text, targets, url });
 
-  if (result.error) {
-    return res.status(400).json(result);
+    if (result.error) {
+      return res.status(400).json(result);
+    }
+
+    res.json({
+      tool: "keyword-density-v2",
+      mode: url ? "url" : targets ? "target" : "text",
+      ...result
+    });
+  } catch (err) {
+    res.status(400).json({
+      error: "Unable to analyze URL",
+      detail: err.message
+    });
   }
-
-  res.json({
-    tool: "keyword-density-v2",
-    mode: targets ? "target" : "text",
-    ...result
-  });
 }

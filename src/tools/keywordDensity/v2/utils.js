@@ -27,3 +27,28 @@ export function classify(count, density, totalWords) {
   if (count === 1 && totalWords > 300) return "low-usage";
   return "ok";
 }
+import fetch from "node-fetch";
+import cheerio from "cheerio";
+
+export async function extractTextFromUrl(url) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (SEO Tool)"
+    },
+    timeout: 15000
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch URL");
+  }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+
+  // remove junk
+  $("script, style, noscript, iframe, svg").remove();
+
+  const text = $("body").text();
+
+  return cleanText(text);
+}

@@ -2,15 +2,23 @@ import {
   cleanText,
   generateNgrams,
   countOccurrences,
-  classify
+  classify,
+  extractTextFromUrl
 } from "./utils.js";
 
-export default function analyzeKeywordDensityV2({ text, targets }) {
-  if (!text || typeof text !== "string") {
-    return { error: "Text is required" };
+export default async function analyzeKeywordDensityV2({ text, targets, url }) {
+  let inputText = text;
+
+  // URL mode
+  if (url) {
+    inputText = await extractTextFromUrl(url);
   }
 
-  const cleaned = cleanText(text);
+  if (!inputText || typeof inputText !== "string") {
+    return { error: "Text or URL is required" };
+  }
+
+  const cleaned = cleanText(inputText);
   const words = cleaned.split(" ");
   const totalWords = words.length;
 
