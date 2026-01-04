@@ -28,7 +28,8 @@ export function classify(count, density, totalWords) {
   return "ok";
 }
 import fetch from "node-fetch";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
+
 
 export async function extractTextFromUrl(url) {
   const response = await fetch(url, {
