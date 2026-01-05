@@ -27,10 +27,10 @@ export const PRESETS = {
 };
 
 export const GRADE_LABELS = [
-  { min: 0, max: 5, label: "Very Easy" },
-  { min: 6, max: 8, label: "Easy" },
-  { min: 9, max: 10, label: "Standard" },
-  { min: 11, max: 12, label: "Difficult" },
+  { min: 0, max: 5.9, label: "Very Easy" },
+  { min: 6, max: 8.9, label: "Easy" },
+  { min: 9, max: 10.9, label: "Standard" },
+  { min: 11, max: 12.9, label: "Difficult" },
   { min: 13, max: 20, label: "Very Difficult" }
 ];
 

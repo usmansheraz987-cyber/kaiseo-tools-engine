@@ -184,6 +184,14 @@ function buildActions(sentenceFlags, paragraphIssues, presetConfig) {
       });
     }
   });
+  // Empty-state message when no issues are found
+  if (actions.length === 0) {
+    actions.push({
+      priority: 0,
+      type: "no_issues",
+      message: "This content meets readability standards for the selected audience."
+    });
+  }
 
   return actions;
 }
