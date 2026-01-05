@@ -60,3 +60,62 @@ export async function extractTextFromUrl(url) {
 
   return cleanText(text);
 }
+const STOP_PATTERNS = [
+  "if you",
+  "let’s",
+  "lets",
+  "you can",
+  "you should",
+  "for example",
+  "for instance",
+  "step by step",
+  "in this guide",
+  "this article",
+  "we’ll",
+  "we will"
+];
+
+const MONTHS = [
+  "january","february","march","april","may","june",
+  "july","august","september","october","november","december"
+];
+
+export function isValidGapPhrase(phrase, stopwords = []) {
+  const words = phrase.split(" ");
+  const lower = phrase.toLowerCase();
+
+  // length rule
+  if (words.length < 2 || words.length > 5) return false;
+
+  // stop patterns
+  if (STOP_PATTERNS.some(p => lower.startsWith(p) || lower.includes(p)))
+    return false;
+
+  // date / filler rules
+  if (
+    MONTHS.some(m => lower.includes(m)) ||
+    /\b(19|20)\d{2}\b/.test(lower) ||
+    /\b\d+(st|nd|rd|th)\b/.test(lower) ||
+    lower.includes("retrieved") ||
+    lower.includes("updated") ||
+    lower.includes("published")
+  ) return false;
+
+  // stop-word density
+  const stopCount = words.filter(w => stopwords.includes(w)).length;
+  if (stopCount / words.length > 0.5) return false;
+
+  return true;
+}
+
+export function classifyGapPhrase(phrase) {
+  const lower = phrase.toLowerCase();
+
+  if (lower.startsWith("what is") || lower.startsWith("how to") || lower.startsWith("why"))
+    return "section";
+
+  if (lower.includes("tools") || lower.includes("examples") || lower.includes("like"))
+    return "example";
+
+  return "concept";
+}

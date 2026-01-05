@@ -90,6 +90,23 @@ export default async function keywordDensityGapService({ url, competitors }) {
     }
   }
 
+  const STOP_PHRASES = [
+  "a list of",
+  "let's say",
+  "if you're",
+  "you want to",
+  "step by step",
+  "there's how"
+];
+
+const filteredGaps = gaps.filter(g => {
+  if (g.phrase.length < 6) return false; // too short
+  if (STOP_PHRASES.includes(g.phrase)) return false;
+  if (g.competitorsAvg < 3) return false; // weak signal
+  return true;
+});
+
+
   // phrase-first sorting
   gaps.sort((a, b) => {
     const aLen = a.phrase.split(" ").length;
@@ -98,10 +115,11 @@ export default async function keywordDensityGapService({ url, competitors }) {
     return b.competitorsAvg - a.competitorsAvg;
   });
 
-  return {
-    tool: "keyword-density-gap",
-    yourUrl: url,
-    competitors: competitors.length,
-    phraseGaps: gaps.slice(0, 30) // limit noise
-  };
+return {
+  tool: "keyword-density-gap",
+  url,
+  competitors: competitorUrls.length,
+  gaps: grouped
+};
+
 }
