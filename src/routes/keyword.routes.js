@@ -15,3 +15,7 @@ router.post("/keyword-density", keywordDensityController);
 router.post("/keyword-density/v2", keywordDensityV2Controller);
 
 export default router;
+// v2-gap route (new)
+import keywordDensityGapController from "../tools/keywordDensity/v2-gap/controller.js";
+
+router.post("/keyword-density/gap", keywordDensityGapController);
