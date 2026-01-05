@@ -2,10 +2,9 @@
 
 /**
  * Flesch Reading Ease
- * Formula:
  * 206.835 − 1.015 × (words / sentences) − 84.6 × (syllables / words)
  */
-function calculateFleschReadingEase(stats) {
+export function calculateFleschReadingEase(stats) {
   const { wordCount, sentenceCount, syllableCount } = stats;
 
   if (!wordCount || !sentenceCount || !syllableCount) return null;
@@ -20,10 +19,9 @@ function calculateFleschReadingEase(stats) {
 
 /**
  * Flesch–Kincaid Grade Level
- * Formula:
  * 0.39 × (words / sentences) + 11.8 × (syllables / words) − 15.59
  */
-function calculateFleschKincaidGrade(stats) {
+export function calculateFleschKincaidGrade(stats) {
   const { wordCount, sentenceCount, syllableCount } = stats;
 
   if (!wordCount || !sentenceCount || !syllableCount) return null;
@@ -38,11 +36,9 @@ function calculateFleschKincaidGrade(stats) {
 
 /**
  * Gunning Fog Index
- * Formula:
  * 0.4 × ((words / sentences) + 100 × (complexWords / words))
- * Complex words = 3+ syllables
  */
-function calculateGunningFog(stats) {
+export function calculateGunningFog(stats) {
   const { wordCount, sentenceCount, complexWordCount } = stats;
 
   if (!wordCount || !sentenceCount) return null;
@@ -54,9 +50,3 @@ function calculateGunningFog(stats) {
 
   return Number(fog.toFixed(2));
 }
-
-module.exports = {
-  calculateFleschReadingEase,
-  calculateFleschKincaidGrade,
-  calculateGunningFog
-};

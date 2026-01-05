@@ -4,8 +4,9 @@
  * Split text into paragraphs.
  * Paragraphs are separated by one or more empty lines.
  */
-function splitParagraphs(text = "") {
+export function splitParagraphs(text = "") {
   if (!text) return [];
+
   return text
     .split(/\n\s*\n+/)
     .map(p => p.trim())
@@ -14,10 +15,11 @@ function splitParagraphs(text = "") {
 
 /**
  * Split text into sentences.
- * Simple heuristic. Good enough for readability scoring.
+ * Simple heuristic, good enough for readability scoring.
  */
-function splitSentences(text = "") {
+export function splitSentences(text = "") {
   if (!text) return [];
+
   return text
     .replace(/\n+/g, " ")
     .split(/(?<=[.!?])\s+/)
@@ -27,10 +29,11 @@ function splitSentences(text = "") {
 
 /**
  * Tokenize text into words.
- * Lowercase, remove punctuation, keep numbers.
+ * Lowercase, strip punctuation, keep numbers.
  */
-function tokenizeWords(text = "") {
+export function tokenizeWords(text = "") {
   if (!text) return [];
+
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
@@ -40,9 +43,9 @@ function tokenizeWords(text = "") {
 
 /**
  * Rough syllable counter.
- * Heuristic-based. Accuracy is acceptable for readability formulas.
+ * Heuristic-based (acceptable for readability formulas).
  */
-function countSyllables(word = "") {
+export function countSyllables(word = "") {
   if (!word) return 0;
 
   const cleaned = word
@@ -51,18 +54,11 @@ function countSyllables(word = "") {
 
   if (cleaned.length <= 3) return 1;
 
-  const vowels = cleaned.match(/[aeiouy]{1,2}/g);
-  let count = vowels ? vowels.length : 0;
+  const matches = cleaned.match(/[aeiouy]{1,2}/g);
+  let count = matches ? matches.length : 0;
 
-  // Silent "e"
+  // silent trailing "e"
   if (cleaned.endsWith("e")) count--;
 
   return count > 0 ? count : 1;
 }
-
-module.exports = {
-  splitParagraphs,
-  splitSentences,
-  tokenizeWords,
-  countSyllables
-};
