@@ -1,0 +1,58 @@
+// tools/readability/v1/constants.js
+
+/**
+ * Audience presets
+ * These control thresholds and expectations.
+ */
+const PRESETS = {
+  general_blog: {
+    maxSentenceLength: 25,
+    maxParagraphLength: 120,
+    targetGradeRange: [6, 9]
+  },
+
+  ecommerce_product: {
+    maxSentenceLength: 20,
+    maxParagraphLength: 90,
+    targetGradeRange: [5, 8]
+  },
+
+  help_article: {
+    maxSentenceLength: 22,
+    maxParagraphLength: 100,
+    targetGradeRange: [6, 8]
+  },
+
+  local_service: {
+    maxSentenceLength: 18,
+    maxParagraphLength: 80,
+    targetGradeRange: [5, 7]
+  }
+};
+
+/**
+ * Grade labels based on Flesch-Kincaid Grade Level
+ */
+const GRADE_LABELS = [
+  { min: 0, max: 5, label: "Very Easy" },
+  { min: 6, max: 8, label: "Easy" },
+  { min: 9, max: 10, label: "Standard" },
+  { min: 11, max: 12, label: "Difficult" },
+  { min: 13, max: 20, label: "Very Difficult" }
+];
+
+/**
+ * Action priority order
+ * Used to rank fixes by impact.
+ */
+const ACTION_PRIORITY_ORDER = [
+  "long_sentences",
+  "passive_voice",
+  "long_paragraphs"
+];
+
+module.exports = {
+  PRESETS,
+  GRADE_LABELS,
+  ACTION_PRIORITY_ORDER
+};
