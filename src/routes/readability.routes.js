@@ -1,21 +1,10 @@
-// routes/readability.routes.js
+// src/routes/readability.routes.js
 
-const express = require("express");
+import express from "express";
+import { readabilityController } from "../tools/readability/v1/controller.js";
+
 const router = express.Router();
 
-const {
-  readabilityController
-} = require("../tools/readability/v1/controller");
+router.post("/readability", readabilityController);
 
-// middleware (keep same pattern as your other routes)
-// const auth = require("../middleware/auth");
-// const usageLimit = require("../middleware/usageLimit");
-
-router.post(
-  "/readability",
-  // auth,
-  // usageLimit,
-  readabilityController
-);
-
-module.exports = router;
+export default router;

@@ -1,16 +1,8 @@
 // tools/readability/v1/controller.js
 
-const { analyzeReadability } = require("./service");
+import { analyzeReadability } from "./service.js";
 
-/**
- * POST /readability
- * Body:
- * {
- *   "text": "...",
- *   "preset": "general_blog"
- * }
- */
-async function readabilityController(req, res, next) {
+export function readabilityController(req, res, next) {
   try {
     const { text, preset } = req.body;
 
@@ -21,13 +13,8 @@ async function readabilityController(req, res, next) {
     }
 
     const result = analyzeReadability(text, preset);
-
     return res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 }
-
-module.exports = {
-  readabilityController
-};
