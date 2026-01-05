@@ -1,55 +1,41 @@
 import {
+  extractTextFromUrl,
   cleanText,
   generateNgrams,
   countOccurrences,
-  extractTextFromUrl,
   isMeaningful
 } from "../v2/utils.js";
-
-// helper: extract phrase frequencies
-function extractPhrases(text) {
-  const cleaned = cleanText(text);
-  const words = cleaned.split(" ").filter(Boolean);
-  const totalWords = words.length;
-
-  const phrases = {};
-
-  for (const n of [2, 3]) {
-    const grams = generateNgrams(words, n);
-    const freq = countOccurrences(grams);
-
-    for (const [phrase, count] of Object.entries(freq)) {
-      if (count < 2) continue;
-      if (!isMeaningful(phrase)) continue;
-
-      phrases[phrase] = {
-        count,
-        density: Number(((count / totalWords) * 100).toFixed(2))
-      };
-    }
-  }
-
-  return { phrases, totalWords };
-}
 
 export default async function keywordDensityGapService({ url, competitors }) {
   if (!url || !Array.isArray(competitors) || competitors.length === 0) {
     return { error: "URL and competitors are required" };
   }
 
-  // YOUR PAGE
-  const yourText = await extractTextFromUrl(url);
-  const yourData = extractPhrases(yourText);
+  // ─────────────────────────────
+  // 1. Extract YOUR content
+  // ─────────────────────────────
+  let yourText;
+  try {
+    yourText = await extractTextFromUrl(url);
+  } catch {
+    return { error: "Failed to fetch your page content" };
+  }
 
-  // COMPETITORS
+  const yourWords = cleanText(yourText).split(" ").filter(Boolean);
+  const yourPhrases = extractPhrases(yourWords);
+
+  // ─────────────────────────────
+  // 2. Extract COMPETITOR content
+  // ─────────────────────────────
   const competitorPhraseMaps = [];
 
   for (const compUrl of competitors) {
     try {
       const text = await extractTextFromUrl(compUrl);
-      competitorPhraseMaps.push(extractPhrases(text).phrases);
+      const words = cleanText(text).split(" ").filter(Boolean);
+      competitorPhraseMaps.push(extractPhrases(words));
     } catch {
-      // skip failed competitor
+      // skip blocked competitor
     }
   }
 
@@ -57,69 +43,98 @@ export default async function keywordDensityGapService({ url, competitors }) {
     return { error: "Unable to fetch competitor content" };
   }
 
-  // MERGE COMPETITOR AVERAGES
+  // ─────────────────────────────
+  // 3. Merge competitor averages
+  // ─────────────────────────────
   const competitorAvg = {};
 
   for (const map of competitorPhraseMaps) {
-    for (const [phrase, data] of Object.entries(map)) {
+    for (const [phrase, count] of Object.entries(map)) {
       if (!competitorAvg[phrase]) {
         competitorAvg[phrase] = { total: 0, count: 0 };
       }
-      competitorAvg[phrase].total += data.count;
+      competitorAvg[phrase].total += count;
       competitorAvg[phrase].count += 1;
     }
   }
 
+  // ─────────────────────────────
+  // 4. GAP RULES
+  // ─────────────────────────────
   const gaps = [];
 
   for (const [phrase, stats] of Object.entries(competitorAvg)) {
-    const avgCount = stats.total / stats.count;
-    const yourCount = yourData.phrases[phrase]?.count || 0;
+    if (!isMeaningful(phrase)) continue;
 
-    // GAP RULES
+    const avg = stats.total / stats.count;
+    const you = yourPhrases[phrase] || 0;
+
     if (
-      yourCount === 0 && avgCount >= 2 ||
-      yourCount > 0 && yourCount < avgCount * 0.5
+      (you === 0 && avg >= 2) ||
+      (you > 0 && you < avg * 0.5)
     ) {
       gaps.push({
         phrase,
-        you: yourCount,
-        competitorsAvg: Math.round(avgCount),
-        action: yourCount === 0 ? "add" : "increase"
+        you,
+        competitorsAvg: Math.round(avg),
+        action: you === 0 ? "add" : "increase"
       });
     }
   }
 
+  // ─────────────────────────────
+  // 5. FILTER NOISE
+  // ─────────────────────────────
   const STOP_PHRASES = [
-  "a list of",
-  "let's say",
-  "if you're",
-  "you want to",
-  "step by step",
-  "there's how"
-];
+    "list of",
+    "let s say",
+    "if you re",
+    "you want to",
+    "step by step",
+    "there s how"
+  ];
 
-const filteredGaps = gaps.filter(g => {
-  if (g.phrase.length < 6) return false; // too short
-  if (STOP_PHRASES.includes(g.phrase)) return false;
-  if (g.competitorsAvg < 3) return false; // weak signal
-  return true;
-});
+  const filteredGaps = gaps.filter(g => {
+    if (g.phrase.split(" ").length < 2) return false;
+    if (STOP_PHRASES.includes(g.phrase)) return false;
+    if (g.competitorsAvg < 3) return false;
+    return true;
+  });
 
-
-  // phrase-first sorting
-  gaps.sort((a, b) => {
+  // ─────────────────────────────
+  // 6. PHRASE-FIRST SORTING
+  // ─────────────────────────────
+  filteredGaps.sort((a, b) => {
     const aLen = a.phrase.split(" ").length;
     const bLen = b.phrase.split(" ").length;
     if (aLen !== bLen) return bLen - aLen;
     return b.competitorsAvg - a.competitorsAvg;
   });
 
-return {
-  tool: "keyword-density-gap",
-  url,
-  competitors: competitorUrls.length,
-  gaps: grouped
-};
+  // ─────────────────────────────
+  // 7. FINAL RETURN
+  // ─────────────────────────────
+  return {
+    tool: "keyword-density-gap",
+    url,
+    competitors: competitors.length,
+    phraseGaps: filteredGaps
+  };
+}
 
+// ─────────────────────────────
+// Helper: phrase extraction
+// ─────────────────────────────
+function extractPhrases(words) {
+  const phrases = {};
+
+  for (const n of [2, 3]) {
+    const grams = generateNgrams(words, n);
+    const freq = countOccurrences(grams);
+    for (const [k, v] of Object.entries(freq)) {
+      phrases[k] = (phrases[k] || 0) + v;
+    }
+  }
+
+  return phrases;
 }
