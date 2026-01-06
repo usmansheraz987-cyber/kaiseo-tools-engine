@@ -35,16 +35,17 @@ function buildDescriptionVariants(keyword, intent) {
 
   if (intent === "transactional") {
     return [
-      `Looking for reliable ${keyword} services? Learn how to choose the right solution, avoid common mistakes, and get measurable results.`,
-      `Discover how professional ${keyword} solutions work, what they cost, and how they help businesses grow faster online.`
+      `Looking for reliable ${keyword} services? Learn how to choose the right solution, avoid common mistakes, compare options, and get measurable results for your business.`,
+      `Discover how professional ${keyword} solutions work, what they cost, what to expect, and how they help businesses grow traffic, trust, and conversions.`
     ];
   }
 
   return [
-    `Learn what ${keyword} is, how it works, why it matters, and how it helps websites improve visibility, traffic, and long-term performance.`,
-    `This complete guide explains ${keyword} with clear examples, real benefits, and practical insights you can actually use.`
+    `Learn what ${keyword} is, how it works, why it matters for search visibility, and how it helps websites grow organic traffic, authority, and long-term performance.`,
+    `This complete guide explains ${keyword} with clear examples, real benefits, practical use cases, and actionable insights you can apply immediately.`
   ];
 }
+
 
 /* ---------- scoring ---------- */
 
