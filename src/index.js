@@ -3,7 +3,7 @@ import cors from "cors";
 import { config } from "./config/env.js";
 import keywordRoutes from "./routes/keyword.routes.js";
 import readabilityRoutes from "./routes/readability.routes.js";
-
+import metaGeneratorRoute from "./routes/metaGenerator.route.js";
 
 const app = express();
 
@@ -16,6 +16,7 @@ app.get("/", (req, res) => {
 
 app.use("/api", keywordRoutes);
 app.use("/api", readabilityRoutes);
+app.use("/api", metaGeneratorRoute);
 
 
 app.listen(config.port, () => {
