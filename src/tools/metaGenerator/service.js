@@ -13,45 +13,38 @@ import {
 } from "./utils.js";
 
 function buildTitleVariants(keyword, intent) {
+  if (!keyword) return [];
+
   if (intent === "transactional") {
     return [
-      `Best ${keyword} Services You Can Trust`,
-      `${keyword} Solutions That Actually Work`
+      `Best ${keyword} Services for Businesses That Want Real Results`,
+      `${keyword} Solutions That Help You Grow Traffic and Conversions`
     ];
   }
+
   return [
-    `${keyword} Explained Simply`,
-    `What Is ${keyword} and Why It Matters`
+    `${keyword} Explained Simply: Meaning, Benefits, and Real Examples`,
+    `What Is ${keyword}? A Clear Guide for Beginners and Professionals`
   ];
 }
+
 
 function buildDescriptionVariants(keyword, intent) {
+  if (!keyword) return [];
+
   if (intent === "transactional") {
     return [
-      `Looking for reliable ${keyword}? Learn how to choose the right option and get results that matter.`,
-      `Discover proven ${keyword} solutions, pricing insights, and what to expect before you decide.`
+      `Looking for reliable ${keyword} services? Learn how to choose the right solution, avoid common mistakes, and get measurable results.`,
+      `Discover how professional ${keyword} solutions work, what they cost, and how they help businesses grow faster online.`
     ];
   }
+
   return [
-    `Learn what ${keyword} is, how it works, and why it plays an important role in real-world use.`,
-    `A clear guide to ${keyword}, including examples, benefits, and practical explanations.`
+    `Learn what ${keyword} is, how it works, why it matters, and how it helps websites improve visibility, traffic, and long-term performance.`,
+    `This complete guide explains ${keyword} with clear examples, real benefits, and practical insights you can actually use.`
   ];
 }
 
-function scoreVariant(text, keyword, min, max) {
-  const lengthScore = scoreLength(text.length, min, max);
-  const keywordScore = scoreKeywordPresence(text, keyword);
-  const finalScore = Math.round((lengthScore + keywordScore) / 2);
-
-  return {
-    text,
-    scores: {
-      length: lengthScore,
-      keyword: keywordScore,
-      final: finalScore
-    }
-  };
-}
 
 export function generateMeta({ content, targetKeyword }) {
   const keyword = targetKeyword || extractPrimaryKeyword(content);
