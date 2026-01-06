@@ -50,13 +50,15 @@ export function generateMeta({ content, targetKeyword }) {
   const keyword = targetKeyword || extractPrimaryKeyword(content);
   const intent = detectIntent(content);
 
-  const titles = buildTitleVariants(keyword, intent).map(t =>
-    scoreVariant(t, keyword, TITLE_MIN, TITLE_MAX)
-  );
+const titles = buildTitleVariants(keyword, intent)
+  .filter(Boolean)
+  .map(t => scoreVariant(t, keyword, TITLE_MIN, TITLE_MAX));
 
-  const descriptions = buildDescriptionVariants(keyword, intent).map(d =>
-    scoreVariant(d, keyword, DESC_MIN, DESC_MAX)
-  );
+
+const descriptions = buildDescriptionVariants(keyword, intent)
+  .filter(Boolean)
+  .map(d => scoreVariant(d, keyword, DESC_MIN, DESC_MAX));
+
 
   const bestTitle = titles.sort((a, b) => b.scores.final - a.scores.final)[0];
   const bestDescription = descriptions.sort((a, b) => b.scores.final - a.scores.final)[0];
