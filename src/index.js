@@ -5,7 +5,7 @@ import keywordRoutes from "./routes/keyword.routes.js";
 import readabilityRoutes from "./routes/readability.routes.js";
 import metaGeneratorRoute from "./routes/metaGenerator.route.js";
 import contentImproverRoutes from "./routes/contentImprover.routes.js";
-
+import aiRoutes from "./routes/ai.routes.js";
 
 const app = express();
 
@@ -20,6 +20,7 @@ app.use("/api", keywordRoutes);
 app.use("/api", readabilityRoutes);
 app.use("/api", metaGeneratorRoute);
 app.use("/api", contentImproverRoutes);
+app.use("/api", aiRoutes);
 
 app.listen(config.port, () => {
   console.log(`Server running on ${config.port}`);
