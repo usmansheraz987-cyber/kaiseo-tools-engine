@@ -1,5 +1,3 @@
-// src/tools/aiDetector/v1/utils.js
-
 export function normalizeText(text) {
   return text
     .toLowerCase()
@@ -20,8 +18,7 @@ export function tokenize(text) {
     .split(" ")
     .filter(Boolean);
 }
-// src/tools/aiDetector/v1/utils.js
 
 export function countWords(text) {
-  return normalizeText(text).split(" ").filter(Boolean).length;
+  return tokenize(text).length;
 }

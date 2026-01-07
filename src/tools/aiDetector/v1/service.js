@@ -1,7 +1,3 @@
-// src/tools/aiDetector/v1/service.js
-
-
-
 import {
   analyzePerplexity,
   analyzeBurstiness,
@@ -16,8 +12,9 @@ import {
 
 import { countWords } from "./utils.js";
 
-
 export async function analyzeContent(text) {
+  const wordCount = countWords(text);
+
   const signals = {
     perplexity: analyzePerplexity(text),
     burstiness: analyzeBurstiness(text),
@@ -28,8 +25,8 @@ export async function analyzeContent(text) {
   const aiProbability = calculateAIProbability(signals);
   const classification = classify(aiProbability);
   const riskLevel = determineRisk(aiProbability);
-  const confidence = determineConfidence(signals, text);
-  const explanation = buildExplanation(signals);
+  const confidence = determineConfidence(signals, wordCount);
+  const explanation = buildExplanation(signals, wordCount);
 
   return {
     ai_probability: aiProbability,
@@ -41,33 +38,29 @@ export async function analyzeContent(text) {
   };
 }
 
-/* ---------- core logic ---------- */
+/* ---------- CORE LOGIC ---------- */
 
 function calculateAIProbability(signals) {
   let score = 0;
 
   if (signals.perplexity === "high") score += 30;
-  if (signals.perplexity === "medium") score += 15;
+  else if (signals.perplexity === "medium") score += 15;
 
   if (signals.burstiness === "high") score += 25;
-  if (signals.burstiness === "medium") score += 12;
+  else if (signals.burstiness === "medium") score += 12;
 
   if (signals.repetition === "high") score += 25;
-  if (signals.repetition === "medium") score += 12;
+  else if (signals.repetition === "medium") score += 12;
 
   if (signals.structure === "patterned") score += 20;
-  if (signals.structure === "semi-patterned") score += 10;
+  else if (signals.structure === "semi-patterned") score += 10;
 
   return Math.min(score, 100);
 }
 
 function classify(score) {
-  if (score < AI_CLASSIFICATION_THRESHOLDS.likelyHuman)
-    return "Likely Human";
-
-  if (score < AI_CLASSIFICATION_THRESHOLDS.mixed)
-    return "Mixed";
-
+  if (score < AI_CLASSIFICATION_THRESHOLDS.likelyHuman) return "Likely Human";
+  if (score < AI_CLASSIFICATION_THRESHOLDS.mixed) return "Mixed";
   return "Likely AI";
 }
 
@@ -77,9 +70,9 @@ function determineRisk(score) {
   return "high";
 }
 
-function determineConfidence(signals, text) {
-  const wordCount = countWords(text);
+/* ---------- CONFIDENCE (LENGTH-AWARE) ---------- */
 
+function determineConfidence(signals, wordCount) {
   let baseConfidence = "low";
 
   const strongSignals = Object.values(signals).filter(
@@ -89,47 +82,54 @@ function determineConfidence(signals, text) {
   if (strongSignals >= 3) baseConfidence = "high";
   else if (strongSignals === 2) baseConfidence = "medium";
 
-  // Length-aware confidence dampening
-  if (wordCount < 400) return "low";
+  // HARD CAPS BY LENGTH
+  if (wordCount < 120) return "low";
 
-  if (wordCount < 700 && baseConfidence === "high") {
+  if (wordCount < 400 && baseConfidence === "high") {
     return "medium";
   }
 
   return baseConfidence;
 }
 
+/* ---------- EXPLANATION ---------- */
 
-function buildExplanation(signals) {
+function buildExplanation(signals, wordCount) {
   const explanations = [];
 
   if (signals.perplexity !== "low") {
     explanations.push(
-      "Sentence length and phrasing show unusually consistent patterns"
+      "Sentence length and phrasing show unusually consistent patterns."
     );
   }
 
   if (signals.burstiness !== "low") {
     explanations.push(
-      "Sentence rhythm lacks natural variation typical of human writing"
+      "Sentence rhythm lacks the natural variation typical of human writing."
     );
   }
 
   if (signals.repetition !== "low") {
     explanations.push(
-      "Repeated word usage appears higher than expected in human text"
+      "Repeated word usage appears higher than expected in human text."
     );
   }
 
   if (signals.structure !== "natural") {
     explanations.push(
-      "Sentence openings follow predictable structural patterns"
+      "Sentence openings follow predictable structural patterns."
+    );
+  }
+
+  if (wordCount < 400) {
+    explanations.push(
+      "Short text samples reduce detection reliability. Longer content improves accuracy."
     );
   }
 
   if (!explanations.length) {
     explanations.push(
-      "No strong AI writing patterns detected in this text"
+      "No strong AI writing patterns were detected in this text."
     );
   }
 
