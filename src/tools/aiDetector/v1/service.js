@@ -1,5 +1,7 @@
 // src/tools/aiDetector/v1/service.js
 
+
+
 import {
   analyzePerplexity,
   analyzeBurstiness,
@@ -12,6 +14,9 @@ import {
   RISK_LEVEL_THRESHOLDS
 } from "./constants.js";
 
+import { countWords } from "./utils.js";
+
+
 export async function analyzeContent(text) {
   const signals = {
     perplexity: analyzePerplexity(text),
@@ -23,7 +28,7 @@ export async function analyzeContent(text) {
   const aiProbability = calculateAIProbability(signals);
   const classification = classify(aiProbability);
   const riskLevel = determineRisk(aiProbability);
-  const confidence = determineConfidence(signals);
+  const confidence = determineConfidence(signals, text);
   const explanation = buildExplanation(signals);
 
   return {
@@ -72,15 +77,28 @@ function determineRisk(score) {
   return "high";
 }
 
-function determineConfidence(signals) {
-  const highSignals = Object.values(signals).filter(
+function determineConfidence(signals, text) {
+  const wordCount = countWords(text);
+
+  let baseConfidence = "low";
+
+  const strongSignals = Object.values(signals).filter(
     v => v === "high" || v === "patterned"
   ).length;
 
-  if (highSignals >= 3) return "high";
-  if (highSignals === 2) return "medium";
-  return "low";
+  if (strongSignals >= 3) baseConfidence = "high";
+  else if (strongSignals === 2) baseConfidence = "medium";
+
+  // Length-aware confidence dampening
+  if (wordCount < 400) return "low";
+
+  if (wordCount < 700 && baseConfidence === "high") {
+    return "medium";
+  }
+
+  return baseConfidence;
 }
+
 
 function buildExplanation(signals) {
   const explanations = [];
