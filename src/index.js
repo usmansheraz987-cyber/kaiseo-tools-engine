@@ -4,7 +4,8 @@ import { config } from "./config/env.js";
 import keywordRoutes from "./routes/keyword.routes.js";
 import readabilityRoutes from "./routes/readability.routes.js";
 import metaGeneratorRoute from "./routes/metaGenerator.route.js";
-import contentImproverRoutes from "./src/routes/contentImprover.routes.js";
+import contentImproverRoutes from "./routes/contentImprover.routes.js";
+
 
 const app = express();
 
