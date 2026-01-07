@@ -1,0 +1,13 @@
+export const LIMITS = {
+  MAX_SENTENCE_LENGTH: 25,
+  MAX_PARAGRAPH_SENTENCES: 4,
+  MIN_PARAGRAPH_WORDS: 40,
+  MAX_KEYWORD_DENSITY: 2.5,
+  MAX_REPETITION_RATE: 0.08
+};
+
+export const SEVERITY = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high"
+};
