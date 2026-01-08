@@ -25,7 +25,6 @@ app.use("/api", contentImproverRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", seoAnalyzerRoutes);
 
-
 app.listen(config.port, () => {
   console.log(`Server running on ${config.port}`);
 });
