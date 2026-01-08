@@ -1,6 +1,7 @@
 // src/tools/seoAnalyzer/v1/utils.js
 
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
+
 import { URL } from "url";
 
 export function loadHtml(html) {
