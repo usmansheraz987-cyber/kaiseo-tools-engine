@@ -6,3 +6,6 @@ const router = express.Router();
 router.post("/v1/seo-analyzer", seoAnalyzerController);
 
 export default router;
+router.get("/__alive", (req, res) => {
+  res.send("SEO ANALYZER ROUTE IS ALIVE");
+});
