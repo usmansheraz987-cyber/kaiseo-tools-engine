@@ -1,13 +1,11 @@
-import fetch from 'node-fetch';
-import { FETCH_RULES } from './fetchRules.js';
+import fetch from "node-fetch";
+import { FETCH_RULES } from "./fetchRules.js";
 import { protectAgainstSSRF } from "./ssrfGuard.js";
 
-
-
-await protectAgainstSSRF(url);
-
-
 export async function fetchPageHtml(url) {
+  // 🔒 SSRF protection (per request)
+  await protectAgainstSSRF(url);
+
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
@@ -18,18 +16,18 @@ export async function fetchPageHtml(url) {
 
   try {
     response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
+      method: "GET",
+      redirect: "follow",
       follow: FETCH_RULES.maxRedirects,
       signal: controller.signal,
       headers: {
-        'User-Agent': FETCH_RULES.userAgent,
-        'Accept': 'text/html'
+        "User-Agent": FETCH_RULES.userAgent,
+        "Accept": "text/html"
       }
     });
   } catch {
     clearTimeout(timeout);
-    throw new Error('TIMEOUT_OR_FETCH_FAILED');
+    throw new Error("TIMEOUT_OR_FETCH_FAILED");
   }
 
   clearTimeout(timeout);
@@ -38,16 +36,16 @@ export async function fetchPageHtml(url) {
     throw new Error(`HTTP_${response.status}`);
   }
 
-  const contentType = response.headers.get('content-type') || '';
+  const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes(FETCH_RULES.allowedContentType)) {
-    throw new Error('NOT_HTML');
+    throw new Error("NOT_HTML");
   }
 
   const html = await response.text();
 
-  const size = Buffer.byteLength(html, 'utf8');
+  const size = Buffer.byteLength(html, "utf8");
   if (size > FETCH_RULES.maxSizeBytes) {
-    throw new Error('HTML_TOO_LARGE');
+    throw new Error("HTML_TOO_LARGE");
   }
 
   return {
