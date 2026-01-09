@@ -1,4 +1,4 @@
-export function analyzeHeadings(document) {
+export function extractHeadings(document) {
   const headings = {
     h1: [...document.querySelectorAll("h1")].map((h) => h.textContent.trim()),
     h2: [...document.querySelectorAll("h2")].map((h) => h.textContent.trim()),
