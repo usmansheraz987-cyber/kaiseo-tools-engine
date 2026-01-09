@@ -1,12 +1,24 @@
-export function extractHeadings(document) {
+// src/tools/seoAnalyzer/v1/extractors/headings.js
+
+export function extractHeadings($) {
   const headings = {
-    h1: [...document.querySelectorAll("h1")].map((h) => h.textContent.trim()),
-    h2: [...document.querySelectorAll("h2")].map((h) => h.textContent.trim()),
+    h1: [],
+    h2: [],
     h3: [],
     h4: [],
     h5: [],
     h6: [],
   };
+
+  $("h1").each((_, el) => {
+    const text = $(el).text().trim();
+    if (text) headings.h1.push(text);
+  });
+
+  $("h2").each((_, el) => {
+    const text = $(el).text().trim();
+    if (text) headings.h2.push(text);
+  });
 
   const h1Count = headings.h1.length;
   const checks = [];
