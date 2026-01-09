@@ -1,68 +1,59 @@
 /**
- * SEO Analyzer v1 – Final Scoring Engine
- * -------------------------------------
- * Rules:
- * - Start from 100
- * - Critical issues hurt more than warnings
- * - Google-required blockers cap the score
- * - Strong content can still score high
- * - Score is predictable and explainable
+ * SEO Analyzer – Scoring Engine (v1)
+ * Contract-safe with service.js
+ *
+ * IMPORT EXPECTED:
+ * import { calculateScore } from "./scoring.js";
  */
 
-export function calculateFinalScore(checks) {
-  let score = 100;
+export const calculateScore = (checks = []) => {
+  let baseScore = 100;
 
-  let hasGoogleBlocker = false;
-  let criticalCount = 0;
-  let warningCount = 0;
+  let hasCriticalIndexabilityFail = false;
+
+  const categoryScores = {
+    indexability: 100,
+    content: 100,
+    technical: 100,
+  };
 
   for (const check of checks) {
-    // Track blockers
+    const impact = Number(check.scoreImpact || 0);
+    const category = check.category || "content";
+
+    // 🔴 Critical
     if (check.status === "critical") {
-      criticalCount++;
+      baseScore -= impact * 2;
+      categoryScores[category] -= impact * 2;
 
-      // Critical issues are heavier
-      score -= check.scoreImpact * 1.75;
-
-      if (check.googleRequired) {
-        hasGoogleBlocker = true;
+      if (check.googleRequired === true) {
+        hasCriticalIndexabilityFail = true;
       }
     }
 
+    // 🟡 Warning
     if (check.status === "warning") {
-      warningCount++;
-      score -= check.scoreImpact;
+      baseScore -= impact;
+      categoryScores[category] -= impact;
     }
   }
 
-  /**
-   * Soft normalization
-   * Prevents tiny pages from scoring unrealistically high
-   */
-  if (criticalCount === 0 && warningCount <= 2) {
-    score += 5;
+  // 🚫 Google hard blockers cap score
+  if (hasCriticalIndexabilityFail) {
+    baseScore = Math.min(baseScore, 40);
   }
 
-  /**
-   * Google-style hard truth:
-   * If indexing blockers exist, the page cannot score high.
-   * BUT we do not destroy the score completely.
-   */
-  if (hasGoogleBlocker) {
-    score = Math.min(score, 55);
+  // Normalize category scores
+  for (const key of Object.keys(categoryScores)) {
+    categoryScores[key] = Math.max(
+      0,
+      Math.min(100, Math.round(categoryScores[key]))
+    );
   }
-
-  /**
-   * Clamp + round
-   */
-  score = Math.max(0, Math.min(100, Math.round(score)));
 
   return {
-    totalScore: score,
-    hasCriticalIndexabilityFail: hasGoogleBlocker,
-    meta: {
-      criticalCount,
-      warningCount,
-    },
+    totalScore: Math.max(0, Math.min(100, Math.round(baseScore))),
+    categoryScores,
+    hasCriticalIndexabilityFail,
   };
-}
+};
