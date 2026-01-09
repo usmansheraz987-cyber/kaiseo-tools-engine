@@ -1,5 +1,11 @@
 import fetch from 'node-fetch';
 import { FETCH_RULES } from './fetchRules.js';
+import { protectAgainstSSRF } from "./ssrfGuard.js";
+
+
+
+await protectAgainstSSRF(url);
+
 
 export async function fetchPageHtml(url) {
   const controller = new AbortController();
@@ -23,7 +29,7 @@ export async function fetchPageHtml(url) {
     });
   } catch {
     clearTimeout(timeout);
-    throw new Error('FETCH_FAILED');
+    throw new Error('TIMEOUT_OR_FETCH_FAILED');
   }
 
   clearTimeout(timeout);
