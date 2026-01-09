@@ -1,6 +1,7 @@
 // src/tools/seoAnalyzer/v1/service.js
 
 import { loadHtml, isValidUrl } from "./utils.js";
+import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
 
 import { extractMeta } from "./extractors/meta.js";
 import { extractHeadings } from "./extractors/headings.js";
@@ -14,9 +15,23 @@ import { calculateScore } from "./scoring.js";
 import { buildSuggestions } from "./suggestions.js";
 
 export async function runSeoAnalyzer({ url, html }) {
-  if (!html) {
-    throw new Error("HTML content is required for analysis.");
-  }
+
+  if (url && !isValidUrl(url)) {
+  throw new Error("Invalid URL provided.");
+}
+let fetchedMeta = null;
+
+if (!html && url) {
+  const fetched = await fetchPageHtml(url);
+  html = fetched.html;
+  fetchedMeta = fetched.meta;
+}
+
+if (!html) {
+  throw new Error("HTML content is required for analysis.");
+}
+
+
 
   if (url && !isValidUrl(url)) {
     throw new Error("Invalid URL provided.");
@@ -64,10 +79,12 @@ export async function runSeoAnalyzer({ url, html }) {
 
   const suggestions = buildSuggestions(checks);
 
-  return {
-    extracted,     // optional, can be hidden in frontend
-    checks,
-    score,
-    suggestions
-  };
+return {
+  fetchedMeta,    // null if HTML was pasted
+  extracted,
+  checks,
+  score,
+  suggestions
+};
+
 }

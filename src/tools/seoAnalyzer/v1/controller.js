@@ -12,10 +12,6 @@ export async function seoAnalyzerController(req, res) {
       });
     }
 
-    // NOTE:
-    // If URL fetching is added later, it happens BEFORE service call.
-    // For now, html is mandatory for analysis logic.
-
     const result = await runSeoAnalyzer({
       url,
       html
