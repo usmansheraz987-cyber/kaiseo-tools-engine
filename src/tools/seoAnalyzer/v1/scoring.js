@@ -1,27 +1,68 @@
+/**
+ * SEO Analyzer v1 – Final Scoring Engine
+ * -------------------------------------
+ * Rules:
+ * - Start from 100
+ * - Critical issues hurt more than warnings
+ * - Google-required blockers cap the score
+ * - Strong content can still score high
+ * - Score is predictable and explainable
+ */
+
 export function calculateFinalScore(checks) {
   let score = 100;
-  let hasCriticalIndexabilityFail = false;
+
+  let hasGoogleBlocker = false;
+  let criticalCount = 0;
+  let warningCount = 0;
 
   for (const check of checks) {
+    // Track blockers
     if (check.status === "critical") {
-      score -= check.scoreImpact * 2;
+      criticalCount++;
+
+      // Critical issues are heavier
+      score -= check.scoreImpact * 1.75;
 
       if (check.googleRequired) {
-        hasCriticalIndexabilityFail = true;
+        hasGoogleBlocker = true;
       }
     }
 
     if (check.status === "warning") {
+      warningCount++;
       score -= check.scoreImpact;
     }
   }
 
-  if (hasCriticalIndexabilityFail) {
-    score = Math.min(score, 40);
+  /**
+   * Soft normalization
+   * Prevents tiny pages from scoring unrealistically high
+   */
+  if (criticalCount === 0 && warningCount <= 2) {
+    score += 5;
   }
 
+  /**
+   * Google-style hard truth:
+   * If indexing blockers exist, the page cannot score high.
+   * BUT we do not destroy the score completely.
+   */
+  if (hasGoogleBlocker) {
+    score = Math.min(score, 55);
+  }
+
+  /**
+   * Clamp + round
+   */
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
   return {
-    totalScore: Math.max(0, Math.round(score)),
-    hasCriticalIndexabilityFail,
+    totalScore: score,
+    hasCriticalIndexabilityFail: hasGoogleBlocker,
+    meta: {
+      criticalCount,
+      warningCount,
+    },
   };
 }
