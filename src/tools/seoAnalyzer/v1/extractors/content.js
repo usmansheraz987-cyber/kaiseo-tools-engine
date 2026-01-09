@@ -1,16 +1,22 @@
 // src/tools/seoAnalyzer/v1/extractors/content.js
 
-import { normalizeText } from "../utils.js";
-
 export function extractContent($) {
-  const bodyText = normalizeText($("body").text());
+  if (!$) {
+    return {
+      wordCount: 0,
+      textSample: null,
+    };
+  }
 
-  const words = bodyText
-    .split(" ")
-    .filter(w => w.length > 1);
+  const rawText = $("body").text() || "";
+  const cleanText = rawText.replace(/\s+/g, " ").trim();
+
+  const wordCount = cleanText
+    ? cleanText.split(" ").length
+    : 0;
 
   return {
-    wordCount: words.length,
-    textSample: bodyText.slice(0, 500) || null
+    wordCount,
+    textSample: cleanText.slice(0, 200),
   };
 }
