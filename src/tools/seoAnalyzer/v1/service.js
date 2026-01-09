@@ -7,7 +7,7 @@ import { extractHeadings } from "./extractors/headings.js";
 import { extractLinks } from "./extractors/links.js";
 import { extractImages } from "./extractors/images.js";
 import { extractContent } from "./extractors/content.js";
-import { extractTechnical } from "./extractors/technical.js";
+import { analyzeTechnical } from "./extractors/technical.js";
 
 import { analyzeSeo } from "./analyzer.js";
 import { calculateScore } from "./scoring.js";
@@ -34,7 +34,8 @@ export async function runSeoAnalyzer({ url, html }) {
   const links = extractLinks($, url);
   const images = extractImages($);
   const content = extractContent($);
-  const technical = extractTechnical({ url, html });
+  const technical = analyzeTechnical({ url, html });
+
 
   const extracted = {
     meta,
