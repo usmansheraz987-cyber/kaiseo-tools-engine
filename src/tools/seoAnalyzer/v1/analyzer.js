@@ -16,22 +16,7 @@ export function analyzeSeo(extracted) {
   // INDEXABILITY (Google-required)
   // --------------------
 
-  checks.push({
-    key: "https",
-    title: "HTTPS enabled",
-    status: technical.https ? "pass" : "critical",
-    googleRequired: true,
-    category: "indexability",
-    affects: ["ranking", "crawl"],
-    confidence: 0.99,
-    explanation: technical.https
-      ? "The page is served over HTTPS."
-      : "Pages served over HTTP may be considered insecure and can be demoted.",
-    fix: technical.https
-      ? null
-      : "Serve the page over HTTPS using a valid SSL certificate.",
-    scoreImpact: 10
-  });
+
 
   checks.push({
     key: "title_tag",
@@ -91,22 +76,6 @@ export function analyzeSeo(extracted) {
     scoreImpact: 4
   });
 
-  checks.push({
-    key: "h1_presence",
-    title: "H1 heading present",
-    status: headings.h1Count > 0 ? "pass" : "warning",
-    googleRequired: false,
-    category: "content",
-    affects: ["ranking", "ux"],
-    confidence: 0.9,
-    explanation:
-      "An H1 helps search engines and users understand the main topic of the page.",
-    fix:
-      headings.h1Count > 0
-        ? null
-        : "Add a clear H1 heading that reflects the page topic.",
-    scoreImpact: 5
-  });
 
   checks.push({
     key: "content_length",
