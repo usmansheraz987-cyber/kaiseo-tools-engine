@@ -5,6 +5,13 @@ import { seoAnalyzerController } from "../tools/seoAnalyzer/v1/controller.js";
 
 // v2
 import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
+//comparision
+import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/comparison/controller.js";
+router.post(
+  "/seo-analyzer/v2/compare",
+  seoAnalyzerV2CompareController
+);
+
 
 const router = express.Router();
 
