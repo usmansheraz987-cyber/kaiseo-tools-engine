@@ -1,14 +1,22 @@
 import express from "express";
+
+// v1
 import { seoAnalyzerController } from "../tools/seoAnalyzer/v1/controller.js";
+
+// v2
+import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
 
 const router = express.Router();
 
 // health check
-router.get("/__alive", (req, res) => {
+router.get("/_alive", (req, res) => {
   res.send("SEO ANALYZER ROUTE IS ALIVE");
 });
 
-// main analyzer endpoint
-router.post("/v1/seo-analyzer", seoAnalyzerController);
+// v1 (stable)
+router.post("/seo-analyzer/v1/analyze", seoAnalyzerController);
+
+// v2 (advanced)
+router.post("/seo-analyzer/v2/analyze", seoAnalyzerV2Controller);
 
 export default router;
