@@ -1,31 +1,54 @@
-import { loadHtml } from "../v1/utils.js";
+// src/tools/seoAnalyzer/v2/service.js
+
+import { loadHtml, isValidUrl } from "../v1/utils.js";
+import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
+
+// v2 layers
 import { cleanContent } from "./cleaners/contentCleaner.js";
 import { extractCleanContent } from "./extractors/content.js";
 import { analyzeContentStrength } from "./analyzer/contentStrength.js";
 import { calculateV2Score } from "./scoring/index.js";
 
-// Reuse v1 extractors
+// v1 extractors (reused)
 import { extractMeta } from "../v1/extractors/meta.js";
 import { extractHeadings } from "../v1/extractors/headings.js";
 import { extractLinks } from "../v1/extractors/links.js";
 import { extractImages } from "../v1/extractors/images.js";
 import { analyzeTechnical } from "../v1/extractors/technical.js";
 
-// Reuse v1 analyzer for non-content checks
+// v1 logic reused
 import { analyzeSeo as analyzeV1Seo } from "../v1/analyzer.js";
 import { buildSuggestions } from "../v1/suggestions.js";
 
 export async function runSeoAnalyzerV2({ html, url }) {
+  let fetchedMeta = null;
+
+  // --------------------
+  // Input handling
+  // --------------------
+  if (!html && url) {
+    if (!isValidUrl(url)) {
+      throw new Error("INVALID_URL");
+    }
+
+    const fetched = await fetchPageHtml(url);
+    html = fetched.html;
+    fetchedMeta = fetched.meta;
+  }
+
   if (!html) {
     throw new Error("HTML_REQUIRED");
   }
 
+  // --------------------
+  // Load DOM
+  // --------------------
   const $ = loadHtml(html);
 
   // --------------------
   // v2 content cleaning
   // --------------------
-  const rawText = $("body").text();
+  const rawText = $("body").text() || "";
   const cleaned = cleanContent($);
 
   // --------------------
@@ -52,7 +75,7 @@ export async function runSeoAnalyzerV2({ html, url }) {
   };
 
   // --------------------
-  // Analysis phase
+  // Analysis
   // --------------------
   const v1Checks = analyzeV1Seo(extracted);
   const v2ContentChecks = analyzeContentStrength(contentMetrics);
@@ -70,6 +93,7 @@ export async function runSeoAnalyzerV2({ html, url }) {
   const suggestions = buildSuggestions(allChecks);
 
   return {
+    fetchedMeta, // null if HTML was pasted
     extracted,
     checks: allChecks,
     score,
