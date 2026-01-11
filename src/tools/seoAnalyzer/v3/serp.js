@@ -1,6 +1,8 @@
 import fetch from "node-fetch";
 
 export async function fetchSerpResults(query) {
+    console.log("SERP API CALLED");
+
   if (!process.env.SERP_API_KEY) {
     throw new Error("SERP_API_KEY_MISSING");
   }
