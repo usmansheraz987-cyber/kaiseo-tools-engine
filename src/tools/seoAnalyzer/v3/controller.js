@@ -11,7 +11,10 @@ export async function seoAnalyzerV3Controller(req, res) {
       });
     }
 
-    const result = await runSeoAnalyzerV3({ url, primaryQuery });
+    const result = await runSeoAnalyzerV3({
+      url,
+      primaryQuery
+    });
 
     return res.status(200).json({
       success: true,
