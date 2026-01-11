@@ -38,4 +38,5 @@ router.post("/seo-analyzer/v2/compare", seoAnalyzerV2CompareController);
 
 // v3 
 router.post("/seo-analyzer/v3/analyze", seoAnalyzerV3Controller);
+
 export default router;
