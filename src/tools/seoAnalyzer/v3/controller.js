@@ -1,51 +1,69 @@
-import { seoAnalyzerV2Controller } from "../v2/controller.js";
+import { runSeoAnalyzerV2 } from "../v2/service.js";
 import { fetchSerpData } from "./service.js";
 import { serpContextAnalyzer } from "./analyzer/serpContext.js";
 
 export async function seoAnalyzerV3Controller(req, res) {
   try {
-    const { primaryQuery } = req.body || {};
+    const { html, url, primaryQuery } = req.body || {};
 
-    if (!primaryQuery || primaryQuery.length < 3) {
+    // validation
+    if (!primaryQuery || primaryQuery.trim().length < 3) {
       return res.status(400).json({
         success: false,
         error: "primaryQuery is required for v3 analysis."
       });
     }
 
-    // run v2 internally
-    const v2Result = await seoAnalyzerV2Controller(req, null, true);
-
-    if (!v2Result.success) {
-      return res.status(400).json(v2Result);
+    if (!html && !url) {
+      return res.status(400).json({
+        success: false,
+        error: "Either HTML content or URL must be provided."
+      });
     }
 
-    const contentSignals =
-      v2Result.data.cleanContent ||
-      v2Result.data.content ||
-      v2Result.data.contentSignals;
+    // 1️⃣ Run v2 service directly (SAFE)
+    const v2Result = await runSeoAnalyzerV2({ html, url });
 
-    if (!contentSignals) {
+    if (!v2Result) {
+      return res.status(400).json({
+        success: false,
+        error: "v2 analysis returned no result."
+      });
+    }
+
+    // 2️⃣ Find content signals safely
+    const contentSignals =
+      v2Result.cleanContent ||
+      v2Result.content ||
+      v2Result;
+
+    if (
+      !contentSignals ||
+      typeof contentSignals.cleanWordCount !== "number"
+    ) {
       return res.status(400).json({
         success: false,
         error: "Content signals missing from v2 analysis."
       });
     }
 
+    // 3️⃣ Fetch SERP context (mock, safe)
     const { serpBenchmarks, competitors } =
       await fetchSerpData(primaryQuery);
 
+    // 4️⃣ Compare page vs SERP
     const relativeScore = serpContextAnalyzer({
       pageWordCount: contentSignals.cleanWordCount,
-      pageHeadingCount: contentSignals.paragraphCount,
+      pageParagraphCount: contentSignals.paragraphCount,
       serpBenchmarks
     });
 
+    // 5️⃣ Final response
     return res.status(200).json({
       success: true,
       version: "v3",
       data: {
-        ...v2Result.data,
+        ...v2Result,
         context: {
           query: primaryQuery,
           serpSampleSize: 10

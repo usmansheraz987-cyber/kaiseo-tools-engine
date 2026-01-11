@@ -1,10 +1,12 @@
 /**
  * v3 SERP Context Service
- * TEMP implementation (no external API)
- * Safe for Render, no crashes
+ * Stable mock implementation
+ * No external API
+ * No fetch
+ * No crashes
  */
 export async function fetchSerpData(query) {
-  // mock SERP competitors (trust layer)
+  // Visible competitors for trust
   const competitors = [
     {
       title: "Best SEO Tools in 2026",
@@ -20,11 +22,11 @@ export async function fetchSerpData(query) {
     }
   ];
 
-  // mock SERP benchmarks
+  // Safe benchmark defaults
   return {
     serpBenchmarks: {
       medianWordCount: 1800,
-      medianHeadingCount: 14
+      medianParagraphCount: 20
     },
     competitors
   };

@@ -11,7 +11,6 @@ import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/comparis
 
 //v3 
 import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
-
 const router = express.Router();
 
 /* --------------------
@@ -38,5 +37,4 @@ router.post("/seo-analyzer/v2/compare", seoAnalyzerV2CompareController);
 
 // v3 
 router.post("/seo-analyzer/v3/analyze", seoAnalyzerV3Controller);
-
 export default router;
