@@ -1,22 +1,26 @@
 /**
- * v3 SERP data service
- * Uses SERP benchmarks only
- * DOES NOT reprocess content
+ * v3 SERP Context Service
+ * TEMP implementation (no external API)
+ * Safe for Render, no crashes
  */
 export async function fetchSerpData(query) {
-  // Replace with real SERP API later
-  const serpResults = await fetchSerpApi(query);
+  // mock SERP competitors (trust layer)
+  const competitors = [
+    {
+      title: "Best SEO Tools in 2026",
+      url: "https://example.com/best-seo-tools"
+    },
+    {
+      title: "Top SEO Software Compared",
+      url: "https://example.com/seo-software"
+    },
+    {
+      title: "SEO Tools Review Guide",
+      url: "https://example.com/seo-tools-review"
+    }
+  ];
 
-  // internally analyze top 10
-  const topPages = serpResults.slice(0, 10);
-
-  // show max 3 competitors for trust
-  const competitors = topPages.slice(0, 3).map(p => ({
-    title: p.title,
-    url: p.url
-  }));
-
-  // static safe benchmarks (no crashes)
+  // mock SERP benchmarks
   return {
     serpBenchmarks: {
       medianWordCount: 1800,
