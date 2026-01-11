@@ -1,3 +1,6 @@
+console.log("V2 CONTROLLER HIT");
+console.log("V2 ANALYSIS FINISHED");
+
 import { runSeoAnalyzerV2 } from "./service.js";
 
 export async function seoAnalyzerV2Controller(req, res, internal = false) {

@@ -13,28 +13,34 @@ export async function seoAnalyzerV3Controller(req, res) {
       });
     }
 
-    // 1️⃣ Run v2 internally
+    // run v2 internally
     const v2Result = await seoAnalyzerV2Controller(req, null, true);
 
     if (!v2Result.success) {
       return res.status(400).json(v2Result);
     }
 
-    // 2️⃣ Extract signals from v2 result
-    const contentSignals = v2Result.data.contentSignals;
+    const contentSignals =
+      v2Result.data.cleanContent ||
+      v2Result.data.content ||
+      v2Result.data.contentSignals;
 
-    // 3️⃣ Fetch SERP benchmarks + competitors
+    if (!contentSignals) {
+      return res.status(400).json({
+        success: false,
+        error: "Content signals missing from v2 analysis."
+      });
+    }
+
     const { serpBenchmarks, competitors } =
       await fetchSerpData(primaryQuery);
 
-    // 4️⃣ Compare page vs SERP
     const relativeScore = serpContextAnalyzer({
       pageWordCount: contentSignals.cleanWordCount,
-      pageHeadingCount: contentSignals.headingCount,
+      pageHeadingCount: contentSignals.paragraphCount,
       serpBenchmarks
     });
 
-    // 5️⃣ Send final response
     return res.status(200).json({
       success: true,
       version: "v3",
