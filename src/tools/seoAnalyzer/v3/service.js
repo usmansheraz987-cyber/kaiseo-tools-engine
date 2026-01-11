@@ -1,26 +1,22 @@
 import { runSeoAnalyzerV2 } from "../v2/service.js";
-import { fetchSerpData } from "./serp.js";
+import { fetchSerpResults } from "./serp.js";
 import { serpContextAnalyzer } from "./analyzer/serpContext.js";
 
-/**
- * V3 MAIN SERVICE
- * - Calls v2 for core analysis
- * - Calls real SERP API (NO fallback)
- * - Throws error if SERP fails
- */
+console.log("V3 SERVICE FILE LOADED");
+
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   console.log("V3 SERVICE FUNCTION RUNNING");
 
   if (!url) {
-    throw new Error("URL is required for v3 analysis.");
+    throw new Error("URL is required for v3 analysis");
   }
 
   if (!primaryQuery || primaryQuery.trim().length < 3) {
-    throw new Error("primaryQuery is required for v3 analysis.");
+    throw new Error("primaryQuery is required for v3 analysis");
   }
 
   /* --------------------
-     1️⃣ Run v2 analysis
+     1️⃣ Run v2 (core analysis)
   -------------------- */
   const v2Result = await runSeoAnalyzerV2({ url });
 
@@ -30,12 +26,12 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   }
 
   /* --------------------
-     2️⃣ REAL SERP API (NO FALLBACK)
+     2️⃣ SERP (REAL — no fallback)
   -------------------- */
-  console.log("SERP API CALLED");
+  const serpData = await fetchSerpResults(primaryQuery);
 
-  const serpData = await fetchSerpData(primaryQuery);
-  const { serpBenchmarks, competitors } = serpData;
+  const serpBenchmarks = serpData.benchmarks;
+  const competitors = serpData.competitors;
 
   /* --------------------
      3️⃣ Relative score
@@ -53,10 +49,10 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     ...v2Result,
     context: {
       query: primaryQuery,
-      serpSampleSize: serpBenchmarks?.sampleSize || null
+      serpSampleSize: 10
     },
-    relativeScore,
     serpBenchmarks,
-    competitors
+    competitors,
+    relativeScore
   };
 }
