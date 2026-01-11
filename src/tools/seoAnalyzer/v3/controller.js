@@ -6,7 +6,7 @@ export async function seoAnalyzerV3Controller(req, res) {
   try {
     const { html, url, primaryQuery } = req.body || {};
 
-    // validation
+    // basic validation
     if (!primaryQuery || primaryQuery.trim().length < 3) {
       return res.status(400).json({
         success: false,
@@ -21,7 +21,7 @@ export async function seoAnalyzerV3Controller(req, res) {
       });
     }
 
-    // 1️⃣ Run v2 service directly (SAFE)
+    // 1️⃣ Run v2 SERVICE directly (never controller)
     const v2Result = await runSeoAnalyzerV2({ html, url });
 
     if (!v2Result) {
@@ -31,11 +31,16 @@ export async function seoAnalyzerV3Controller(req, res) {
       });
     }
 
-    // 2️⃣ Find content signals safely
+    /**
+     * 2️⃣ Extract content signals SAFELY
+     * This handles ALL possible v2 shapes
+     */
     const contentSignals =
-      v2Result.cleanContent ||
-      v2Result.content ||
-      v2Result;
+      v2Result?.analysis?.cleanContent ||
+      v2Result?.analysis?.content ||
+      v2Result?.content?.cleanContent ||
+      v2Result?.content ||
+      v2Result?.cleanContent;
 
     if (
       !contentSignals ||
@@ -47,7 +52,7 @@ export async function seoAnalyzerV3Controller(req, res) {
       });
     }
 
-    // 3️⃣ Fetch SERP context (mock, safe)
+    // 3️⃣ Fetch SERP context (mock, stable)
     const { serpBenchmarks, competitors } =
       await fetchSerpData(primaryQuery);
 
