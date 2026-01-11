@@ -1,4 +1,6 @@
 import { runSeoAnalyzerV3 } from "./service.js";
+console.log("V3 CONTROLLER FILE LOADED");
+
 
 export async function seoAnalyzerV3Controller(req, res) {
   try {

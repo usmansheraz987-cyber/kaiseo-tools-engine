@@ -1,6 +1,10 @@
+console.log("V3 SERVICE FILE LOADED");
 import { runSeoAnalyzerV2 } from "../v2/service.js";
 import { fetchSerpResults } from "./serp.js";
 import { getIntentBenchmarks } from "./intentBenchmarks.js";
+
+
+
 
 /* ───────────────── Cache (in-memory, 24h) ───────────────── */
 
@@ -14,6 +18,8 @@ function getCacheKey(url, query) {
 /* ───────────────── Main Runner ───────────────── */
 
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
+    console.log("V3 SERVICE FUNCTION RUNNING");
+
   const cacheKey = getCacheKey(url, primaryQuery);
   const cached = cache.get(cacheKey);
 
@@ -22,7 +28,8 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   }
 
   /* 1️⃣ Run v2 (CORE ANALYSIS) */
-  const v2Result = await runSeoAnalyzerV2({ url });
+  const result = await runSeoAnalyzerV3({ url, primaryQuery });
+
 
   if (!v2Result?.extracted?.content) {
     throw new Error("Content signals missing from v2 analysis.");
