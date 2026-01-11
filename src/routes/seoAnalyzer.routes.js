@@ -10,7 +10,7 @@ import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
 import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/comparison/controller.js";
 
 //v3 
-import { analyzeV3 } from "../tools/seoAnalyzer/v3/controller.js"
+import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
 
 const router = express.Router();
 
@@ -37,6 +37,6 @@ router.post("/seo-analyzer/v2/analyze", seoAnalyzerV2Controller);
 router.post("/seo-analyzer/v2/compare", seoAnalyzerV2CompareController);
 
 // v3 
-router.post("/seo-analyzer/v3/analyze", analyzeV3)
+router.post("/seo-analyzer/v3/analyze", seoAnalyzerV3Controller);
 
 export default router;
