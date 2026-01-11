@@ -1,93 +1,62 @@
-console.log("V3 SERVICE FILE LOADED");
 import { runSeoAnalyzerV2 } from "../v2/service.js";
-import { fetchSerpResults } from "./serp.js";
-import { getIntentBenchmarks } from "./intentBenchmarks.js";
+import { fetchSerpData } from "./serp.js";
+import { serpContextAnalyzer } from "./analyzer/serpContext.js";
 
-
-
-
-/* ───────────────── Cache (in-memory, 24h) ───────────────── */
-
-const CACHE_TTL = 24 * 60 * 60 * 1000;
-const cache = new Map();
-
-function getCacheKey(url, query) {
-  return `${url}::${query}`.toLowerCase();
-}
-
-/* ───────────────── Main Runner ───────────────── */
-
+/**
+ * V3 MAIN SERVICE
+ * - Calls v2 for core analysis
+ * - Calls real SERP API (NO fallback)
+ * - Throws error if SERP fails
+ */
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
-    console.log("V3 SERVICE FUNCTION RUNNING");
+  console.log("V3 SERVICE FUNCTION RUNNING");
 
-  const cacheKey = getCacheKey(url, primaryQuery);
-  const cached = cache.get(cacheKey);
-
-  if (cached && Date.now() - cached.time < CACHE_TTL) {
-    return cached.data;
+  if (!url) {
+    throw new Error("URL is required for v3 analysis.");
   }
 
-  /* 1️⃣ Run v2 (CORE ANALYSIS) */
-  const result = await runSeoAnalyzerV3({ url, primaryQuery });
+  if (!primaryQuery || primaryQuery.trim().length < 3) {
+    throw new Error("primaryQuery is required for v3 analysis.");
+  }
 
+  /* --------------------
+     1️⃣ Run v2 analysis
+  -------------------- */
+  const v2Result = await runSeoAnalyzerV2({ url });
 
-  if (!v2Result?.extracted?.content) {
+  const contentSignals = v2Result?.extracted?.content;
+  if (!contentSignals) {
     throw new Error("Content signals missing from v2 analysis.");
   }
 
-  /* 2️⃣ SERP (real or fallback) */
-  let serpBenchmarks;
-  let competitors = [];
-  let relativeScore = {
-    overall: 50,
-    contentDepth: "unknown",
-    structureMatch: "unknown",
-    note: "Fallback baseline used"
-  };
+  /* --------------------
+     2️⃣ REAL SERP API (NO FALLBACK)
+  -------------------- */
+  console.log("SERP API CALLED");
 
-  try {
-    if (process.env.SERP_API_ENABLED === "true") {
-      const serpData = await fetchSerpResults(primaryQuery);
+  const serpData = await fetchSerpData(primaryQuery);
+  const { serpBenchmarks, competitors } = serpData;
 
-      serpBenchmarks = serpData.benchmarks;
-      competitors = serpData.competitors;
+  /* --------------------
+     3️⃣ Relative score
+  -------------------- */
+  const relativeScore = serpContextAnalyzer({
+    pageWordCount: contentSignals.cleanWordCount,
+    pageParagraphCount: contentSignals.paragraphCount,
+    serpBenchmarks
+  });
 
-      relativeScore = {
-        overall:
-          v2Result.extracted.content.cleanWordCount >=
-          serpBenchmarks.medianWordCount
-            ? 90
-            : 50,
-        contentDepth:
-          v2Result.extracted.content.cleanWordCount >=
-          serpBenchmarks.medianWordCount
-            ? "meets_serp_median"
-            : "below_serp_median",
-        structureMatch: "partial"
-      };
-    } else {
-      throw new Error("SERP_DISABLED");
-    }
-  } catch {
-    serpBenchmarks = getIntentBenchmarks(primaryQuery);
-  }
-
-  /* 3️⃣ Final Response */
-  const finalResult = {
+  /* --------------------
+     4️⃣ Final response
+  -------------------- */
+  return {
     ...v2Result,
     context: {
       query: primaryQuery,
-      serpSampleSize: 10
+      serpSampleSize: serpBenchmarks?.sampleSize || null
     },
     relativeScore,
     serpBenchmarks,
     competitors
   };
-
-  cache.set(cacheKey, {
-    time: Date.now(),
-    data: finalResult
-  });
-
-  return finalResult;
 }
