@@ -1,65 +1,28 @@
-import { runSeoAnalyzerV2 } from "../v2/service.js";
-import { fetchSerpData } from "./service.js";
-import { serpContextAnalyzer } from "./analyzer/serpContext.js";
+import { runSeoAnalyzerV3 } from "./service.js";
 
 export async function seoAnalyzerV3Controller(req, res) {
   try {
-    const { html, url, primaryQuery } = req.body || {};
+    const { url, primaryQuery } = req.body || {};
 
-    if (!primaryQuery || primaryQuery.trim().length < 3) {
+    if (!url || !primaryQuery) {
       return res.status(400).json({
         success: false,
-        error: "primaryQuery is required for v3 analysis."
+        error: "url and primaryQuery are required"
       });
     }
 
-    if (!html && !url) {
-      return res.status(400).json({
-        success: false,
-        error: "Either HTML content or URL must be provided."
-      });
-    }
+    const result = await runSeoAnalyzerV3({ url, primaryQuery });
 
-    // 1️⃣ Run v2 service (stable)
-    const v2Result = await runSeoAnalyzerV2({ html, url });
-
-    // 2️⃣ Try to extract content stats (if available)
-const contentSignals =
-  v2Result?.extracted?.content || null;
-
-
-    // 3️⃣ Fetch SERP context (mock)
-    const { serpBenchmarks, competitors } =
-      await fetchSerpData(primaryQuery);
-
-    // 4️⃣ Calculate relative score SAFELY
-const relativeScore = serpContextAnalyzer({
-  pageWordCount: contentSignals.cleanWordCount,
-  pageParagraphCount: contentSignals.paragraphCount,
-  serpBenchmarks
-});
-
-
-    // 5️⃣ Always return response (NO FAIL)
     return res.status(200).json({
       success: true,
       version: "v3",
-      data: {
-        ...v2Result,
-        context: {
-          query: primaryQuery,
-          serpSampleSize: 10
-        },
-        relativeScore,
-        serpBenchmarks,
-        competitors
-      }
+      data: result
     });
 
   } catch (error) {
     return res.status(400).json({
       success: false,
-      error: error.message || "SEO analysis (v3) failed."
+      error: error.message || "SEO analysis (v3) failed"
     });
   }
 }
