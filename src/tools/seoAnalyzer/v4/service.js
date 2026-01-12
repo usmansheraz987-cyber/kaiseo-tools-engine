@@ -6,49 +6,70 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 /**
  * Run SEO Analyzer v4
  *
- * v4 depends on:
- * - v2 core analysis
- * - v3 SERP context
- *
- * It NEVER fetches data itself.
+ * v4 = decision layer
+ * Depends ONLY on v2 + v3 outputs
+ * Never fetches, never parses HTML
  */
 export async function runSeoAnalyzerV4({
   v2Result,
   v3Result
 }) {
-  // ---- Safety checks ----
+  // --------------------
+  // Hard safety
+  // --------------------
   if (!v2Result || !v3Result) {
-    throw new Error("v4 requires v2 and v3 results");
+    throw new Error("V4_REQUIRES_V2_AND_V3");
   }
 
-  // ---- Inputs from v3 ----
-  const serpTitles = v3Result?.serp?.titles || [];
-  const serpLive = v3Result?.context?.serpSource === "live";
+  // --------------------
+  // SERP data (from v3)
+  // --------------------
+  // Use defensive access — v3 shape is allowed to evolve
+  const serpTitles =
+    v3Result?.serpBenchmarks?.titles ||
+    v3Result?.competitors?.titles ||
+    [];
 
-  // ---- Inputs from v2 ----
+  const serpLive =
+    v3Result?.context?.serpSource === "live";
+
+  // --------------------
+  // Page structure (from v2)
+  // --------------------
   const pageHeadings =
-    v2Result?.extracted?.headings?.map(h => h.text) || [];
+    Array.isArray(v2Result?.extracted?.headings)
+      ? v2Result.extracted.headings.map(h => h.text)
+      : [];
 
   const hasCriticalTechnicalIssues =
-    v2Result?.score?.hasCriticalIndexabilityFail || false;
+    Boolean(v2Result?.score?.hasCriticalIndexabilityFail);
 
-  // ---- INTENT ----
+  // --------------------
+  // INTENT (SERP only, deterministic)
+  // --------------------
   const serpIntent = detectSerpIntent(serpTitles);
 
-  const pageIntent =
-    v2Result?.content?.intent || "informational";
+  // v2 does NOT calculate intent → keep this honest
+  const pageIntent = "informational";
 
   const intentStatus =
-    serpIntent.intent === pageIntent
-      ? "match"
-      : serpIntent.intent === "unknown"
+    serpIntent.intent === "unknown"
       ? "unknown"
+      : serpIntent.intent === pageIntent
+      ? "match"
       : "mismatch";
 
-  // ---- TOPICAL GAPS ----
-  const gaps = detectTopicalGaps(serpTitles, pageHeadings);
+  // --------------------
+  // TOPICAL / STRUCTURAL GAPS
+  // --------------------
+  const gaps = detectTopicalGaps(
+    serpTitles,
+    pageHeadings
+  );
 
-  // ---- ACTION PRIORITIZATION ----
+  // --------------------
+  // ACTION PRIORITY
+  // --------------------
   const actions = prioritizeActions({
     intent: {
       status: intentStatus
@@ -58,13 +79,17 @@ export async function runSeoAnalyzerV4({
     hasCriticalTechnicalIssues
   });
 
-  // ---- CONFIDENCE ----
+  // --------------------
+  // CONFIDENCE
+  // --------------------
   const confidence = resolveConfidence({
     serpLive,
     intentConfidence: serpIntent.confidence
   });
 
-  // ---- FINAL RESPONSE ----
+  // --------------------
+  // FINAL v4 OUTPUT
+  // --------------------
   return {
     intent: {
       serp: serpIntent.intent,
