@@ -2,7 +2,7 @@ import { runSeoAnalyzerV2 } from "../v2/service.js";
 import { runSeoAnalyzerV3 } from "../v3/service.js";
 import { runSeoAnalyzerV4 } from "./service.js";
 
-export async function analyzeV4(req, res, next) {
+export async function seoAnalyzerV4Controller(req, res, next) {
   try {
     const { url, html, primaryQuery } = req.body;
 
@@ -13,17 +13,14 @@ export async function analyzeV4(req, res, next) {
       });
     }
 
-    // v2 core analysis
     const v2Result = await runSeoAnalyzerV2({ url, html });
 
-    // v3 context analysis (SERP / fallback)
     const v3Result = await runSeoAnalyzerV3({
       url,
       html,
       primaryQuery
     });
 
-    // v4 decision layer
     const v4Result = await runSeoAnalyzerV4({
       v2Result: v2Result.data,
       v3Result: v3Result.data
@@ -38,3 +35,4 @@ export async function analyzeV4(req, res, next) {
     next(err);
   }
 }
+``
