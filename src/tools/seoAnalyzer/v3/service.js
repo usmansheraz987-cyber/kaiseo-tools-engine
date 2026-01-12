@@ -1,14 +1,22 @@
 import { runSeoAnalyzerV2 } from "../v2/service.js";
 import { fetchSerpResults } from "./serp.js";
-import { serpContextAnalyzer } from "./analyzer/serpContext.js";
 import { getIntentBenchmarks } from "./intentBenchmarks.js";
+
+import {
+  canCallSerp,
+  recordSerpFailure,
+  recordSerpSuccess
+} from "./safety/serpGuard.js";
+
+import { calculateRelativeScore } from "./scoring/relativeScoring.js";
+import { buildCompetitorInsights } from "./competitors/insights.js";
 
 console.log("V3 SERVICE FILE LOADED");
 
 /* --------------------
    SERP CACHE (24h)
 -------------------- */
-const SERP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const SERP_CACHE_TTL = 24 * 60 * 60 * 1000;
 const serpCache = new Map();
 
 /* --------------------
@@ -18,7 +26,7 @@ const MAX_SERP_CALLS_PER_HOUR = 200;
 let serpCalls = 0;
 let serpWindowStart = Date.now();
 
-function canUseSerp() {
+function canUseSerpQuota() {
   const now = Date.now();
 
   if (now - serpWindowStart > 60 * 60 * 1000) {
@@ -29,6 +37,9 @@ function canUseSerp() {
   return serpCalls < MAX_SERP_CALLS_PER_HOUR;
 }
 
+/* ====================
+   MAIN RUNNER
+==================== */
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   console.log("V3 SERVICE FUNCTION RUNNING");
 
@@ -65,14 +76,15 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     competitors = cached.competitors;
   } else {
     try {
-      if (!canUseSerp()) {
-        throw new Error("SERP_QUOTA_GUARD");
+      if (!canUseSerpQuota() || !canCallSerp()) {
+        throw new Error("SERP_GUARDED");
       }
 
       console.log("SERP API CALLED");
       serpCalls++;
 
       const serpData = await fetchSerpResults(primaryQuery);
+      recordSerpSuccess();
 
       serpBenchmarks = serpData.benchmarks;
       competitors = serpData.competitors;
@@ -85,37 +97,47 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     } catch (err) {
       console.warn("SERP FALLBACK USED:", err.message);
 
+      recordSerpFailure();
       usedFallback = true;
+
       serpBenchmarks = getIntentBenchmarks(primaryQuery);
       competitors = [];
     }
   }
 
   /* --------------------
-     3️⃣ Relative score
+     3️⃣ Relative scoring
   -------------------- */
-  const relativeScore = serpContextAnalyzer({
-    pageWordCount: contentSignals.cleanWordCount,
-    pageParagraphCount: contentSignals.paragraphCount,
-    serpBenchmarks
+  const relativeScore = calculateRelativeScore({
+    pageContent: contentSignals,
+    serpBenchmarks,
+    usedFallback
   });
 
-  if (usedFallback) {
-    relativeScore.note = "Fallback baseline used";
-  }
+  /* --------------------
+     4️⃣ Competitor insights
+  -------------------- */
+  const competitorInsights = buildCompetitorInsights({
+    competitors,
+    serpBenchmarks,
+    pageContent: contentSignals
+  });
 
   /* --------------------
-     4️⃣ Final response
+     5️⃣ Final response
   -------------------- */
   return {
     ...v2Result,
+
     context: {
       query: primaryQuery,
       serpSampleSize: 10,
       serpSource: usedFallback ? "fallback" : "live"
     },
+
     serpBenchmarks,
     competitors,
+    competitorInsights,
     relativeScore
   };
 }
