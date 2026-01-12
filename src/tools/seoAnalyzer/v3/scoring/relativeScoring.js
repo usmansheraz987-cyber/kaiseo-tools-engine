@@ -1,23 +1,38 @@
-let failureCount = 0;
-let circuitOpenUntil = 0;
+export function calculateRelativeScore({
+  pageContent,
+  serpBenchmarks,
+  usedFallback
+}) {
+  const result = {
+    overall: 0,
+    contentDepth: "unknown",
+    structureMatch: "unknown"
+  };
 
-const MAX_FAILURES = 5;
-const COOLDOWN_MS = 10 * 60 * 1000;
-
-export function canCallSerp() {
-  if (Date.now() < circuitOpenUntil) return false;
-  return true;
-}
-
-export function recordSerpFailure() {
-  failureCount++;
-  if (failureCount >= MAX_FAILURES) {
-    circuitOpenUntil = Date.now() + COOLDOWN_MS;
-    failureCount = 0;
+  if (!pageContent || !serpBenchmarks) {
+    result.note = "Insufficient data";
+    return result;
   }
-}
 
-export function recordSerpSuccess() {
-  failureCount = 0;
-}
+  if (pageContent.cleanWordCount >= serpBenchmarks.medianWordCount) {
+    result.contentDepth = "above_serp_median";
+    result.overall += 50;
+  } else {
+    result.contentDepth = "below_serp_median";
+    result.overall += 30;
+  }
 
+  if (pageContent.paragraphCount >= serpBenchmarks.medianParagraphCount) {
+    result.structureMatch = "good";
+    result.overall += 40;
+  } else {
+    result.structureMatch = "partial";
+    result.overall += 20;
+  }
+
+  if (usedFallback) {
+    result.note = "Fallback baseline used";
+  }
+
+  return result;
+}
