@@ -13,6 +13,10 @@ import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/comparis
 import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
 
 const router = express.Router();
+// v4
+
+// v4 decide
+import { seoAnalyzerV4Controller } from "../tools/seoAnalyzer/v4/controller.js";
 
 /* --------------------
    Health check
@@ -38,5 +42,10 @@ router.post("/seo-analyzer/v2/compare", seoAnalyzerV2CompareController);
 
 // v3 
 router.post("/seo-analyzer/v3/analyze", seoAnalyzerV3Controller);
+
+
+// v4 decide
+router.post("/seo-analyzer/v4/decide", seoAnalyzerV4Controller);
+
 
 export default router;
