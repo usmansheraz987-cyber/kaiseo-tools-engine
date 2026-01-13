@@ -1,4 +1,4 @@
-import { fetchPage } from "../../lib/fetcher/fetchPage.js";
+import { fetchPage } from "../../../lib/fetcher/fetchPage.js";
 import { extractLinks } from "./extractor.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import { LIMITS } from "./limits.js";
