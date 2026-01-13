@@ -1,5 +1,5 @@
 import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 
 export async function loadSitemapUrls(sitemapUrl) {
   try {

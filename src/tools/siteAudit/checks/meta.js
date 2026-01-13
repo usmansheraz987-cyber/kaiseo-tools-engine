@@ -1,4 +1,5 @@
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
+
 
 export function checkMeta(page, allPages) {
   const issues = [];

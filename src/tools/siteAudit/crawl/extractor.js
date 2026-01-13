@@ -1,4 +1,4 @@
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 
 export function extractLinks(html, baseUrl) {
   if (!html) return [];
