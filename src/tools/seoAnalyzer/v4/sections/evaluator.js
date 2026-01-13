@@ -1,15 +1,7 @@
 /**
- * Evaluate section coverage
- *
- * @param {Object} matchResult
- * @param {Array} matchResult.present
- * @param {Array} matchResult.missing
- *
- * @returns {{
- *   missing: Array,
- *   present: Array
- * }}
+ * Evaluate section coverage with severity awareness
  */
+
 export function evaluateSections(matchResult = {}) {
   const present = Array.isArray(matchResult.present)
     ? matchResult.present
@@ -21,6 +13,11 @@ export function evaluateSections(matchResult = {}) {
 
   return {
     present,
-    missing
+    missing,
+    missingBySeverity: {
+      high: missing.filter(s => s.severity === "high"),
+      medium: missing.filter(s => s.severity === "medium"),
+      low: missing.filter(s => s.severity === "low")
+    }
   };
 }

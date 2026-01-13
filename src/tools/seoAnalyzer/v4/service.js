@@ -1,17 +1,14 @@
 import { detectSerpIntent } from "./intent/detectIntent.js";
-import { detectTopicalGaps } from "./gaps/topicalGaps.js";
 import { prioritizeActions } from "./actions/prioritize.js";
 import { resolveConfidence } from "./confidence/confidenceScore.js";
 
-/* v4.1 imports */
 import { getSectionRules } from "./sections/rules.js";
 import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
-import { sectionGapsToActions } from "./sections/toActions.js";
 
 /**
  * SEO Analyzer v4 + v4.1
- * Decision layer
+ * Decision + Section Expectation Engine
  */
 export async function runSeoAnalyzerV4({ v3Result }) {
   if (!v3Result) {
@@ -25,7 +22,8 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     ? v3Result.competitors.map(c => c?.title).filter(Boolean)
     : [];
 
-  const serpLive = v3Result?.context?.serpSource === "live";
+  const serpLive =
+    v3Result?.context?.serpSource === "live";
 
   /* --------------------
      Page headings
@@ -38,9 +36,11 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     Boolean(v3Result?.score?.hasCriticalIndexabilityFail);
 
   /* --------------------
-     Intent
+     Intent detection
   -------------------- */
   const serpIntent = detectSerpIntent(serpTitles);
+
+  // We keep page intent conservative for now
   const pageIntent = "informational";
 
   const intentStatus =
@@ -50,42 +50,36 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       ? "match"
       : "mismatch";
 
-  /* --------------------
-     v4.1 — Section Expectations
-  -------------------- */
+  /* =================================================
+     v4.1 — SECTION EXPECTATION RULES (B + C)
+  ================================================= */
+
+  // 1️⃣ Load expected sections based on intent
   const expectedSections = getSectionRules(serpIntent.intent);
 
+  // 2️⃣ Match against page headings
   const sectionMatch = matchSections(
     expectedSections,
     pageHeadings
   );
 
-  const sectionEvaluation = evaluateSections(sectionMatch);
+  // 3️⃣ Evaluate with severity
+  const sectionEval = evaluateSections(sectionMatch);
 
-  const sectionActions = sectionGapsToActions(
-    sectionEvaluation.missing
-  );
-
-  /* --------------------
-     Existing v4 gaps (optional)
-  -------------------- */
-  const gaps = detectTopicalGaps(
-    serpTitles,
-    pageHeadings
-  );
+  // 4️⃣ Intent-based weighting
+  // Comparison intent → ONLY high-severity sections block ranking
+  const weightedMissingSections =
+    serpIntent.intent === "comparison"
+      ? sectionEval.missingBySeverity.high
+      : sectionEval.missing;
 
   /* --------------------
-     Merge actions
+     Build actions
   -------------------- */
   const actions = prioritizeActions({
-    intent: {
-      status: intentStatus
-    },
-    missingSections: [
-      ...gaps.missing,
-      ...sectionEvaluation.missing.map(s => s.label)
-    ],
-    weakSections: gaps.weak,
+    intent: { status: intentStatus },
+    missingSections: weightedMissingSections.map(s => s.label),
+    weakSections: [],
     hasCriticalTechnicalIssues
   });
 
@@ -98,7 +92,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
   });
 
   /* --------------------
-     Final output
+     Final v4 response
   -------------------- */
   return {
     intent: {
@@ -109,8 +103,11 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     },
     sections: {
       expected: expectedSections.map(s => s.label),
-      present: sectionEvaluation.present.map(s => s.label),
-      missing: sectionEvaluation.missing.map(s => s.label)
+      present: sectionEval.present.map(s => s.label),
+      missing: sectionEval.missing.map(s => ({
+        label: s.label,
+        severity: s.severity
+      }))
     },
     actions,
     confidence
