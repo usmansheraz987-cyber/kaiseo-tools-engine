@@ -5,47 +5,45 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 /**
  * SEO Analyzer v4
- * Decision layer only
- * Consumes v3 + v2 outputs
+ * Decision layer
+ * Consumes REAL v3 output
  */
-export async function runSeoAnalyzerV4({
-  v2Result,
-  v3Result
-}) {
+export async function runSeoAnalyzerV4({ v3Result }) {
   /* --------------------
      Safety
   -------------------- */
-  if (!v2Result || !v3Result) {
-    throw new Error("V4_REQUIRES_V2_AND_V3");
+  if (!v3Result) {
+    throw new Error("V4_REQUIRES_V3_RESULT");
   }
 
   /* --------------------
-     SERP data (from v3)
+     SERP titles (from competitors)
   -------------------- */
-  const serpTitles =
-    v3Result?.serpBenchmarks?.titles ||
-    v3Result?.competitors?.map(c => c.title).filter(Boolean) ||
-    [];
+  const serpTitles = Array.isArray(v3Result.competitors)
+    ? v3Result.competitors
+        .map(c => c?.title)
+        .filter(Boolean)
+    : [];
 
   const serpLive =
     v3Result?.context?.serpSource === "live";
 
   /* --------------------
-     Page structure (from v2)
+     Page headings (from v3.extracted)
   -------------------- */
-  const pageHeadings = Array.isArray(v2Result?.extracted?.headings)
-    ? v2Result.extracted.headings.map(h => h.text)
+  const pageHeadings = Array.isArray(v3Result?.extracted?.headings)
+    ? v3Result.extracted.headings.map(h => h.text)
     : [];
 
   const hasCriticalTechnicalIssues =
-    Boolean(v2Result?.score?.hasCriticalIndexabilityFail);
+    Boolean(v3Result?.score?.hasCriticalIndexabilityFail);
 
   /* --------------------
-     Intent (SERP only)
+     Intent (SERP-based)
   -------------------- */
   const serpIntent = detectSerpIntent(serpTitles);
 
-  // v2 does NOT define intent — keep honest
+  // We do NOT guess page intent yet
   const pageIntent = "informational";
 
   const intentStatus =
