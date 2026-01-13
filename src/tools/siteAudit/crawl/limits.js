@@ -1,0 +1,6 @@
+export const LIMITS = {
+  MAX_PAGES: 100,
+  MAX_DEPTH: 2,
+  MAX_HTML_SIZE: 2 * 1024 * 1024, // 2MB
+  MAX_TOTAL_TIME_MS: 30_000
+};
