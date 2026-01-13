@@ -1,12 +1,12 @@
-import { fetchPage } from "../../../lib/fetcher/fetchPage.js";
+import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
 import cheerio from "cheerio";
 
 export async function loadSitemapUrls(sitemapUrl) {
   try {
-    const res = await fetchPage(sitemapUrl);
-    if (!res?.body) return [];
+    const res = await fetchPageHtml(sitemapUrl);
+    if (!res.html) return [];
 
-    const $ = cheerio.load(res.body, { xmlMode: true });
+    const $ = cheerio.load(res.html, { xmlMode: true });
     const urls = [];
 
     $("url > loc").each((_, el) => {
