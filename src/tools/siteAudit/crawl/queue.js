@@ -2,6 +2,7 @@ import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
 import { extractLinks } from "./extractor.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import { LIMITS } from "./limits.js";
+import { normalizeUrl } from "../utils/normalizeUrl.js";
 
 export async function createCrawlQueue({
   baseUrl,
@@ -11,22 +12,40 @@ export async function createCrawlQueue({
   startTime
 }) {
   const visited = new Set();
+  const queued = new Set();
   const pages = [];
   const queue = [];
+
   let maxDepth = 0;
   let hitLimit = false;
 
-  // Seed homepage
-  queue.push({ url: baseUrl, depth: 0 });
+  const enqueue = (url, depth) => {
+    const normalized = normalizeUrl(url);
+    if (!normalized) return;
+    if (visited.has(normalized)) return;
+    if (queued.has(normalized)) return;
+    if (depth > LIMITS.MAX_DEPTH) return;
 
-  // Seed sitemap URLs
+    queued.add(normalized);
+    queue.push({ url: normalized, depth });
+  };
+
+  // 1️⃣ Seed homepage
+  enqueue(baseUrl, 0);
+
+  // 2️⃣ Seed sitemap
   if (sitemapUrl) {
-    const sitemapUrls = await loadSitemapUrls(sitemapUrl);
-    for (const url of sitemapUrls) {
-      queue.push({ url, depth: 1 });
+    try {
+      const sitemapUrls = await loadSitemapUrls(sitemapUrl);
+      for (const url of sitemapUrls) {
+        enqueue(url, 1);
+      }
+    } catch {
+      // ignore sitemap failure
     }
   }
 
+  // 3️⃣ Crawl loop (Screaming Frog style)
   while (queue.length && pages.length < maxPages) {
     if (Date.now() - startTime > LIMITS.MAX_TOTAL_TIME_MS) {
       hitLimit = true;
@@ -34,38 +53,42 @@ export async function createCrawlQueue({
     }
 
     const { url, depth } = queue.shift();
-    maxDepth = Math.max(maxDepth, depth);
+    queued.delete(url);
 
     if (visited.has(url)) continue;
-    if (depth > LIMITS.MAX_DEPTH) continue;
     if (!robotsRules.isAllowed(url, "*")) continue;
 
     visited.add(url);
+    maxDepth = Math.max(maxDepth, depth);
 
-    let response;
+    let html = "";
+    let status = 0;
+    let finalUrl = url;
+
     try {
-      response = await fetchPageHtml(url);
-    } catch {
-      continue;
+      const response = await fetchPageHtml(url);
+      html = response.html;
+      status = response.meta.httpStatus;
+      finalUrl = response.meta.finalUrl;
+    } catch (err) {
+      status = 0; // fetch failed, still record page
     }
 
     const page = {
       url,
+      finalUrl,
+      status,
       depth,
-      html: response.html,
-      status: response.meta.httpStatus,
-      finalUrl: response.meta.finalUrl
+      html
     };
 
     pages.push(page);
 
-    // Extract internal links
-    if (depth < LIMITS.MAX_DEPTH && pages.length < maxPages) {
-      const links = extractLinks(page.html, baseUrl);
+    // 4️⃣ Extract links only from valid HTML
+    if (html && depth < LIMITS.MAX_DEPTH && pages.length < maxPages) {
+      const links = extractLinks(html, baseUrl);
       for (const link of links) {
-        if (!visited.has(link)) {
-          queue.push({ url: link, depth: depth + 1 });
-        }
+        enqueue(link, depth + 1);
       }
     }
   }
