@@ -3,7 +3,7 @@ import { loadRobotsRules } from "./utils/robots.js";
 import { createCrawlQueue } from "./crawl/queue.js";
 import { runChecksOnPage } from "./checks/runChecks.js";
 import { buildReport } from "./report/summarize.js";
-import { fetchPageHtml } from "../../../lib/fetcher/fetchPageHtml.js";
+import { fetchPage } from "../../lib/fetcher/fetchPage.js";
 
 export async function runSiteAudit(input) {
   const startTime = Date.now();
@@ -21,7 +21,8 @@ export async function runSiteAudit(input) {
   let rootPage = null;
 
   try {
-    const rootFetch = await fetchPageHtml(baseUrl);
+    const rootFetch = await fetchPage(baseUrl);
+
 
     rootPage = {
       url: baseUrl,
