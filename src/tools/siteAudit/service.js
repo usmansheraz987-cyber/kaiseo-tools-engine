@@ -3,7 +3,8 @@ import { loadRobotsRules } from "./utils/robots.js";
 import { createCrawlQueue } from "./crawl/queue.js";
 import { runChecksOnPage } from "./checks/runChecks.js";
 import { buildReport } from "./report/summarize.js";
-import fetchPage from "../../lib/fetcher/fetchPage.js";
+import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
+
 
 
 export async function runSiteAudit(input) {
@@ -22,7 +23,8 @@ export async function runSiteAudit(input) {
   let rootPage = null;
 
   try {
-    const rootFetch = await fetchPage(baseUrl);
+    const rootFetch = await fetchPageHtml(baseUrl);
+
 
 
     rootPage = {
