@@ -1,8 +1,11 @@
+// src/routes/siteAudit.routes.js
+
 import express from "express";
-import { runSiteAuditController } from "../tools/siteAudit/controller.js";
+import { runSiteAudit } from "../tools/siteAudit/controller.js";
 
 const router = express.Router();
 
-router.post("/run", runSiteAuditController);
+// POST /api/site-audit
+router.post("/site-audit", runSiteAudit);
 
 export default router;

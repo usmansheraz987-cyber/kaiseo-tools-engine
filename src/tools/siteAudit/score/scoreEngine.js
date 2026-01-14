@@ -1,0 +1,65 @@
+// src/tools/siteAudit/score/scoreEngine.js
+
+import { ISSUE_SEVERITY, SEVERITY_PENALTY } from "./weights.js";
+
+const CATEGORY_MAP = {
+  crawlability: [
+    "non_indexable_status",
+    "blocked_or_failed_page",
+    "redirect_chain"
+  ],
+  indexability: [
+    "meta_noindex",
+    "xrobots_noindex",
+    "canonical_mismatch",
+    "insecure_canonical"
+  ],
+  architecture: [
+    "orphan_page",
+    "dead_end_page",
+    "deep_page"
+  ],
+  duplication: [
+    "duplicate_title",
+    "duplicate_meta_description",
+    "url_parameter_duplicate"
+  ],
+  performance: [
+    "slow_response_time",
+    "large_html_size"
+  ],
+  security: [
+    "mixed_content",
+    "not_https"
+  ]
+};
+
+export function calculateScore(groupedIssues) {
+  const categoryScores = {};
+  let siteScore = 100;
+
+  Object.entries(CATEGORY_MAP).forEach(([category, issueKeys]) => {
+    let score = 100;
+
+    issueKeys.forEach(key => {
+      const severity = ISSUE_SEVERITY[key];
+      if (!severity) return;
+
+      const count =
+        groupedIssues.critical.filter(i => i === key).length +
+        groupedIssues.warnings.filter(i => i === key).length +
+        groupedIssues.notices.filter(i => i === key).length;
+
+      score -= count * SEVERITY_PENALTY[severity];
+    });
+
+    score = Math.max(score, 0);
+    categoryScores[category] = score;
+    siteScore = Math.min(siteScore, score);
+  });
+
+  return {
+    siteScore,
+    categoryScores
+  };
+}

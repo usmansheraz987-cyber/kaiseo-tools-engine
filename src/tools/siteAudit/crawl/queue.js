@@ -1,105 +1,46 @@
-import { fetchPageHtml } from "../../../lib/fetcher/fetchPage.js";
-import { extractLinks } from "./extractor.js";
-import { loadSitemapUrls } from "./sitemap.js";
-import { LIMITS } from "./limits.js";
-import { normalizeUrl } from "../utils/normalizeUrl.js";
+// src/tools/siteAudit/crawl/queue.js
 
-export async function createCrawlQueue({
-  baseUrl,
-  sitemapUrl,
-  maxPages,
-  robotsRules,
-  startTime
-}) {
-  const visited = new Set();
-  const queued = new Set();
-  const pages = [];
-  const queue = [];
+export class CrawlQueue {
+  constructor({ maxPages = 100, maxDepth = 5 }) {
+    this.queue = [];
+    this.visited = new Set();
+    this.maxPages = maxPages;
+    this.maxDepth = maxDepth;
+  }
 
-  let maxDepth = 0;
-  let hitLimit = false;
-
-  const enqueue = (url, depth) => {
-    const normalized = normalizeUrl(url);
-    if (!normalized) return;
-    if (visited.has(normalized)) return;
-    if (queued.has(normalized)) return;
-    if (depth > LIMITS.MAX_DEPTH) return;
-
-    queued.add(normalized);
-    queue.push({ url: normalized, depth });
-  };
-
-  // 1️⃣ Seed homepage
-  enqueue(baseUrl, 0);
-
-  // 2️⃣ Seed sitemap
-  if (sitemapUrl) {
+  normalize(url) {
     try {
-      const sitemapUrls = await loadSitemapUrls(sitemapUrl);
-      for (const url of sitemapUrls) {
-        enqueue(url, 1);
-      }
+      const u = new URL(url);
+      u.hash = "";
+      u.search = "";
+      return u.toString().replace(/\/$/, "");
     } catch {
-      // ignore sitemap failure
+      return null;
     }
   }
 
-  // 3️⃣ Crawl loop (Screaming Frog style)
-  while (queue.length && pages.length < maxPages) {
-    if (Date.now() - startTime > LIMITS.MAX_TOTAL_TIME_MS) {
-      hitLimit = true;
-      break;
-    }
+  add(url, depth = 0) {
+    if (depth > this.maxDepth) return;
 
-    const { url, depth } = queue.shift();
-    queued.delete(url);
+    const normalized = this.normalize(url);
+    if (!normalized) return;
 
-    if (visited.has(url)) continue;
-    if (!robotsRules.isAllowed(url, "*")) continue;
+    if (this.visited.has(normalized)) return;
+    if (this.visited.size >= this.maxPages) return;
 
-    visited.add(url);
-    maxDepth = Math.max(maxDepth, depth);
-
-    let html = "";
-    let status = 0;
-    let finalUrl = url;
-
-    try {
-      const response = await fetchPageHtml(url);
-      html = response.html;
-      status = response.meta.httpStatus;
-      finalUrl = response.meta.finalUrl;
-    } catch (err) {
-      status = 0; // fetch failed, still record page
-    }
-
-    const page = {
-      url,
-      finalUrl,
-      status,
-      depth,
-      html
-    };
-
-    pages.push(page);
-
-    // 4️⃣ Extract links only from valid HTML
-    if (html && depth < LIMITS.MAX_DEPTH && pages.length < maxPages) {
-      const links = extractLinks(html, baseUrl);
-      for (const link of links) {
-        enqueue(link, depth + 1);
-      }
-    }
+    this.queue.push({ url: normalized, depth });
+    this.visited.add(normalized);
   }
 
-  if (pages.length >= maxPages) {
-    hitLimit = true;
+  next() {
+    return this.queue.shift() || null;
   }
 
-  return {
-    pages,
-    maxDepth,
-    hitLimit
-  };
+  hasNext() {
+    return this.queue.length > 0;
+  }
+
+  size() {
+    return this.visited.size;
+  }
 }
