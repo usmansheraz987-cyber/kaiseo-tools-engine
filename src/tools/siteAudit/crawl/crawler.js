@@ -13,10 +13,20 @@ export async function crawlPage(url) {
   try {
     let redirectCount = 0;
 
-const res = await fetch(url, {
-  redirect: "follow",
-  follow: 10
-});
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), 8000); // 8s per page
+
+let res;
+try {
+  res = await fetch(url, {
+    redirect: "follow",
+    follow: 10,
+    signal: controller.signal
+  });
+} finally {
+  clearTimeout(timeout);
+}
+
 
 if (res.redirected) {
   redirectCount = res.url !== url ? 1 : 0;
@@ -46,7 +56,10 @@ return {
 };
 
 
-  } catch {
-    return { url, error: true };
+} catch (err) {
+  if (err.name === "AbortError") {
+    return { url, timeout: true };
   }
+  return { url, error: true };
+}
 }

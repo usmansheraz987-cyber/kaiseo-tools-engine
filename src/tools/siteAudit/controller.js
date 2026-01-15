@@ -18,6 +18,9 @@ import { analyzeRedirects } from "./analyze/redirects.js";
 
 export async function runSiteAudit(req, res) {
   const { url, maxPages = 50, maxDepth = 3 } = req.body;
+  const MAX_CRAWL_TIME = 60_000; // 60 seconds
+const crawlStart = Date.now();
+
 
   if (!url) {
     return res.status(400).json({ error: "URL is required" });
@@ -36,14 +39,20 @@ const incomingLinkMap = new Map();
   queue.add(url, 0);
 
   while (queue.hasNext()) {
+    if (Date.now() - crawlStart > MAX_CRAWL_TIME) {
+  allIssues.push("crawl_timeout_reached");
+  break;
+}
+
     const item = queue.next();
 
     const page = await crawlPage(item.url);
 
-    if (!page || page.error || page.blocked) {
-      allIssues.push("blocked_or_failed_page");
-      continue;
-    }
+    if (!page || page.error || page.blocked || page.timeout) {
+  allIssues.push("blocked_or_failed_page");
+  continue;
+}
+
 
     const internalLinks = resolveInternalLinks(
       page.finalUrl || page.url,
@@ -71,10 +80,12 @@ const incomingLinkMap = new Map();
   incomingLinks: incomingLinkMap.get(page.url) || 0
 }),
 
+
   ...analyzeDuplication(dupStore, page),
   ...analyzePerformance(page),
   ...analyzeSecurity(page.url, page.html)
 ];
+
 
 
     allIssues.push(...issues);
