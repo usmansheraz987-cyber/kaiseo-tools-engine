@@ -41,15 +41,11 @@ export function calculateScore(groupedIssues) {
   Object.entries(CATEGORY_MAP).forEach(([category, issueKeys]) => {
     let score = 100;
 
-    issueKeys.forEach(key => {
-      const severity = ISSUE_SEVERITY[key];
+    issueKeys.forEach(issueKey => {
+      const severity = ISSUE_SEVERITY[issueKey];
       if (!severity) return;
 
-      const count =
-        groupedIssues.critical.filter(i => i === key).length +
-        groupedIssues.warnings.filter(i => i === key).length +
-        groupedIssues.notices.filter(i => i === key).length;
-
+      const count = groupedIssues[severity]?.[issueKey] || 0;
       score -= count * SEVERITY_PENALTY[severity];
     });
 
