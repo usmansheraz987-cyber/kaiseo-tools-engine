@@ -11,9 +11,5 @@ export function analyzeRedirects(page) {
     issues.push("redirect_chain");
   }
 
-  if (page.status >= 300 && page.status < 400) {
-    issues.push("internal_redirect");
-  }
-
   return issues;
 }

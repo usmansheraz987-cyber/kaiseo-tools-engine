@@ -36,19 +36,22 @@ export function analyzeIndexability(page) {
   }
 
   // Canonical tag
-  const canonical = $('link[rel="canonical"]').attr("href");
-  if (canonical) {
-    try {
-      const canonicalUrl = new URL(canonical, url).toString();
-      if (canonicalUrl !== url) {
-        issues.push("canonical_mismatch");
-      }
-    } catch {
-      issues.push("invalid_canonical");
+const canonical = $('link[rel="canonical"]').attr("href");
+if (canonical) {
+  try {
+    const canonicalUrl = new URL(canonical, url).origin;
+    const pageOrigin = new URL(url).origin;
+
+    if (canonicalUrl !== pageOrigin) {
+      issues.push("canonical_mismatch");
     }
-  } else {
-    issues.push("missing_canonical");
+  } catch {
+    issues.push("invalid_canonical");
   }
+} else {
+  issues.push("missing_canonical");
+}
+
 
   // X-Robots-Tag (header-level)
   const xRobots = headers?.["x-robots-tag"];

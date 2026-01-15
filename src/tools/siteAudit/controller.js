@@ -1,4 +1,5 @@
 // src/tools/siteAudit/controller.js
+import crypto from "crypto";
 
 import { CrawlQueue } from "./crawl/queue.js";
 import { crawlPage } from "./crawl/crawler.js";
@@ -9,15 +10,26 @@ import { analyzeArchitecture } from "./analyze/architecture.js";
 import { analyzeDuplication } from "./analyze/duplication.js";
 import { analyzePerformance } from "./analyze/performance.js";
 import { analyzeSecurity } from "./analyze/security.js";
+import { fetchSitemapUrls } from "./crawl/sitemap.js";
+
 
 import { buildIssues } from "./aggregate/issueBuilder.js";
 import { buildSummary } from "./aggregate/siteSummary.js";
 import { calculateScore } from "./score/scoreEngine.js";
 import { analyzeRedirects } from "./analyze/redirects.js";
+import crypto from "crypto";
+import {
+  initProgress,
+  incrementProgress,
+  finishProgress
+} from "./progress/store.js";
+
 
 
 export async function runSiteAudit(req, res) {
   const { url, maxPages = 50, maxDepth = 3 } = req.body;
+  const auditId = crypto.randomUUID();
+
   const MAX_CRAWL_TIME = 60_000; // 60 seconds
 const crawlStart = Date.now();
 
@@ -27,6 +39,13 @@ const crawlStart = Date.now();
   }
 
   const queue = new CrawlQueue({ maxPages, maxDepth });
+  // Try sitemap first
+const sitemapUrls = await fetchSitemapUrls(url, maxPages);
+
+sitemapUrls.forEach(sitemapUrl => {
+  queue.add(sitemapUrl, 1);
+});
+
   const pages = [];
 const dupStore = {
   titles: new Set(),
