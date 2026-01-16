@@ -33,8 +33,7 @@ class InMemoryProgressStore extends ProgressStore {
   }
 }
 
-import { RedisProgressStore } from "./redisStore.js";
-import Redis from "ioredis";
+export const progressStore = new InMemoryProgressStore();
 
 let progressStore;
 
