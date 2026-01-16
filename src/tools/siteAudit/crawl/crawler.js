@@ -1,65 +1,58 @@
 // src/tools/siteAudit/crawl/crawler.js
 
-import * as cheerio from "cheerio";
-import { isAllowed } from "./robots.js";
-
 export async function crawlPage(url) {
-  const start = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000); // 8s per page
 
-  if (!(await isAllowed(url))) {
-    return { url, blocked: true };
-  }
+  let res;
 
   try {
-    let redirectCount = 0;
-
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 8000); // 8s per page
-
-let res;
-try {
-  res = await fetch(url, {
-    redirect: "follow",
-    follow: 10,
-    signal: controller.signal
-  });
-} finally {
-  clearTimeout(timeout);
-}
-
-
-if (res.redirected) {
-  redirectCount = res.url !== url ? 1 : 0;
-}
-
-    const html = await res.text();
-
-    const $ = cheerio.load(html);
-    const links = [];
-
-    $("a[href]").each((_, el) => {
-      const href = $(el).attr("href");
-      if (href) links.push(href);
+    res = await fetch(url, {
+      redirect: "follow",
+      follow: 10,
+      signal: controller.signal
     });
+  } catch (err) {
+    clearTimeout(timeout);
 
-return {
-  url,
-  status: res.status,
-  finalUrl: res.url,
-  redirected: res.redirected,
-  redirectCount,
-  html,
-  links,
-  headers: Object.fromEntries(res.headers.entries()),
-  responseTime: Date.now() - start,
-  size: Buffer.byteLength(html, "utf8")
-};
+    if (err.name === "AbortError") {
+      return { url, timeout: true };
+    }
 
-
-} catch (err) {
-  if (err.name === "AbortError") {
-    return { url, timeout: true };
+    return { url, error: true };
   }
-  return { url, error: true };
-}
+
+  clearTimeout(timeout);
+
+  const finalUrl = res.url;
+  const status = res.status;
+
+  let html = "";
+  try {
+    html = await res.text();
+  } catch {
+    return { url: finalUrl, status, error: true };
+  }
+
+  // Extract links safely
+  let links = [];
+  try {
+    const linkRegex = /href\s*=\s*["']([^"']+)["']/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      links.push(match[1]);
+    }
+  } catch {
+    links = [];
+  }
+
+  return {
+    url: finalUrl,
+    originalUrl: url,
+    status,
+    redirected: finalUrl !== url,
+    redirectCount: finalUrl !== url ? 1 : 0,
+    html,
+    links
+  };
 }
