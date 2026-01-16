@@ -1,5 +1,17 @@
 // src/tools/siteAudit/crawl/crawler.js
 
+function extractCanonical(html) {
+  if (!html) return null;
+
+  const match = html.match(
+    /<link\s+[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i
+  );
+
+  return match ? match[1].trim() : null;
+}
+
+
+
 export async function crawlPage(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000); // 8s per page
@@ -46,13 +58,17 @@ export async function crawlPage(url) {
     links = [];
   }
 
-  return {
-    url: finalUrl,
-    originalUrl: url,
-    status,
-    redirected: finalUrl !== url,
-    redirectCount: finalUrl !== url ? 1 : 0,
-    html,
-    links
-  };
+const canonical = extractCanonical(html);
+
+return {
+  url: finalUrl,
+  originalUrl: url,
+  canonical,
+  status,
+  redirected: finalUrl !== url,
+  redirectCount: finalUrl !== url ? 1 : 0,
+  html,
+  links
+};
+
 }

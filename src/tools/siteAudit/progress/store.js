@@ -1,27 +1,48 @@
 // src/tools/siteAudit/progress/store.js
 
-const progressStore = new Map();
+import { ProgressStore } from "./progressStore.js";
 
-export function initProgress(id, total) {
-  progressStore.set(id, {
-    total,
-    processed: 0,
-    status: "running"
-  });
+class InMemoryProgressStore extends ProgressStore {
+  constructor() {
+    super();
+    this.store = new Map();
+  }
+
+  init(id, total) {
+    this.store.set(id, {
+      total,
+      processed: 0,
+      status: "running"
+    });
+  }
+
+  increment(id) {
+    const job = this.store.get(id);
+    if (!job) return;
+    job.processed += 1;
+  }
+
+  finish(id) {
+    const job = this.store.get(id);
+    if (!job) return;
+    job.status = "done";
+  }
+
+  get(id) {
+    return this.store.get(id) || null;
+  }
 }
 
-export function incrementProgress(id) {
-  const job = progressStore.get(id);
-  if (!job) return;
-  job.processed += 1;
+import { RedisProgressStore } from "./redisStore.js";
+import Redis from "ioredis";
+
+let progressStore;
+
+if (process.env.REDIS_URL) {
+  const redis = new Redis(process.env.REDIS_URL);
+  progressStore = new RedisProgressStore(redis);
+} else {
+  progressStore = new InMemoryProgressStore();
 }
 
-export function finishProgress(id) {
-  const job = progressStore.get(id);
-  if (!job) return;
-  job.status = "done";
-}
-
-export function getProgress(id) {
-  return progressStore.get(id) || null;
-}
+export { progressStore };

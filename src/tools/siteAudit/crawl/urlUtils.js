@@ -1,5 +1,18 @@
 // src/tools/siteAudit/crawl/urlUtils.js
 
+export function normalizeCanonical(url) {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    u.search = "";
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+
+
 export function normalizeUrl(url) {
   try {
     const u = new URL(url);

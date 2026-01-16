@@ -1,12 +1,18 @@
 // src/tools/siteAudit/crawl/queue.js
 
+import { normalizeCanonical } from "./urlUtils.js";
+
+
+
 export class CrawlQueue {
-  constructor({ maxPages = 100, maxDepth = 5 }) {
-    this.queue = [];
-    this.visited = new Set();
-    this.maxPages = maxPages;
-    this.maxDepth = maxDepth;
-  }
+constructor({ maxPages = 100, maxDepth = 5 }) {
+  this.queue = [];
+  this.visited = new Set();           // URL-level dedup
+  this.canonicalVisited = new Set();  // Canonical-level dedup
+  this.maxPages = maxPages;
+  this.maxDepth = maxDepth;
+}
+
 
   normalize(url) {
     try {
@@ -43,4 +49,19 @@ export class CrawlQueue {
   size() {
     return this.visited.size;
   }
+  markCanonical(page) {
+  const canonical =
+    normalizeCanonical(page.canonical) ||
+    normalizeCanonical(page.url);
+
+  if (!canonical) return false;
+
+  if (this.canonicalVisited.has(canonical)) {
+    return false;
+  }
+
+  this.canonicalVisited.add(canonical);
+  return true;
+}
+
 }

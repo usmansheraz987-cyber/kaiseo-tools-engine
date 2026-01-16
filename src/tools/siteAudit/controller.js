@@ -34,6 +34,7 @@ export async function runSiteAudit(req, res) {
   // -------- audit + timeout setup --------
   const auditId = crypto.randomUUID();
   const MAX_CRAWL_TIME = 60_000; // 60 seconds
+  const CONCURRENCY = 3;
   const crawlStart = Date.now();
 
   // -------- crawl state --------
@@ -63,25 +64,39 @@ export async function runSiteAudit(req, res) {
   // always crawl entry URL
   queue.add(url, 0);
 
-  // -------- crawl loop --------
-  while (queue.hasNext()) {
-    // global timeout guard
-    if (Date.now() - crawlStart > MAX_CRAWL_TIME) {
-      allIssues.push("crawl_timeout_reached");
-      break;
-    }
+  // crwal loop which is replaced by the new concurrent worker loop
 
-    const item = queue.next();
+  const active = new Set();
+
+async function processNext() {
+  if (!queue.hasNext()) return;
+
+  // global timeout guard
+  if (Date.now() - crawlStart > MAX_CRAWL_TIME) {
+    allIssues.push("crawl_timeout_reached");
+    return;
+  }
+
+  const item = queue.next();
+  if (!item) return;
+
+  const task = (async () => {
     const page = await crawlPage(item.url);
 
     if (!page || page.error || page.blocked || page.timeout) {
       allIssues.push("blocked_or_failed_page");
       incrementProgress(auditId);
-      continue;
+      return;
+    }
+
+    // ---- canonical deduplication ----
+    if (!queue.markCanonical(page)) {
+      incrementProgress(auditId);
+      return;
     }
 
     const internalLinks = resolveInternalLinks(
-      page.finalUrl || page.url,
+      page.url,
       page.links || []
     );
 
@@ -120,7 +135,23 @@ export async function runSiteAudit(req, res) {
     });
 
     incrementProgress(auditId);
+  })();
+
+  active.add(task);
+  task.finally(() => active.delete(task));
+}
+
+while (queue.hasNext() || active.size > 0) {
+  while (queue.hasNext() && active.size < CONCURRENCY) {
+    processNext();
   }
+
+  if (active.size > 0) {
+    await Promise.race(active);
+  }
+}
+
+
 
   // -------- finalize --------
   finishProgress(auditId);
