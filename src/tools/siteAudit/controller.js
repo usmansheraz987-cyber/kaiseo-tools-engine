@@ -75,13 +75,22 @@ export async function runSiteAudit(req, res) {
     if (!item) return;
 
     const task = (async () => {
-      const page = await crawlPage(item.url);
+  let page;
 
-      if (!page || page.error || page.blocked || page.timeout) {
-        allIssues.push("blocked_or_failed_page");
-        progressStore.increment(auditId);
-        return;
-      }
+  try {
+    page = await crawlPage(item.url);
+  } catch (err) {
+    allIssues.push("crawl_exception");
+    progressStore.increment(auditId);
+    return;
+  }
+
+  if (!page || page.error || page.blocked || page.timeout) {
+    allIssues.push("blocked_or_failed_page");
+    progressStore.increment(auditId);
+    return;
+  }
+
 
       // ---- canonical deduplication ----
       if (!queue.markCanonical(page)) {
