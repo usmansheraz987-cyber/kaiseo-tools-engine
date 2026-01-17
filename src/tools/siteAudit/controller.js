@@ -21,164 +21,173 @@ import { calculateScore } from "./score/scoreEngine.js";
 import { progressStore } from "./progress/store.js";
 
 export async function runSiteAudit(req, res) {
-  const { url, maxPages = 50, maxDepth = 3 } = req.body;
-
-  if (!url) {
-    return res.status(400).json({ error: "URL is required" });
-  }
-
-  // -------- audit + timeout setup --------
-  const auditId = crypto.randomUUID();
-  const MAX_CRAWL_TIME = 60_000;
-  const CONCURRENCY = 3;
-  const crawlStart = Date.now();
-
-  // -------- crawl state --------
-  const queue = new CrawlQueue({ maxPages, maxDepth });
-  const pages = [];
-  const allIssues = [];
-  const incomingLinkMap = new Map();
-
-  const dupStore = {
-    titles: new Set(),
-    descriptions: new Set()
-  };
-
-  // -------- progress init --------
-  progressStore.init(auditId, maxPages);
-
-  // -------- sitemap discovery --------
   try {
-    const sitemapUrls = await fetchSitemapUrls(url, maxPages);
-    sitemapUrls.forEach(sitemapUrl => {
-      queue.add(sitemapUrl, 1);
-    });
-  } catch {
-    // sitemap optional
-  }
+    const { url, maxPages = 50, maxDepth = 3 } = req.body;
 
-  // always crawl entry URL
-  queue.add(url, 0);
-
-  // -------- concurrent crawl loop --------
-  const active = new Set();
-
-  async function processNext() {
-    if (!queue.hasNext()) return;
-
-    if (Date.now() - crawlStart > MAX_CRAWL_TIME) {
-      allIssues.push("crawl_timeout_reached");
-      return;
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
     }
 
-    const item = queue.next();
-    if (!item) return;
+    // -------- audit + timeout setup --------
+    const auditId = crypto.randomUUID();
+    const MAX_CRAWL_TIME = 20_000;
+    const CONCURRENCY = 2;
+    const crawlStart = Date.now();
 
-    const task = (async () => {
-  let page;
+    // -------- crawl state --------
+    const queue = new CrawlQueue({ maxPages, maxDepth });
+    const pages = [];
+    const allIssues = [];
+    const incomingLinkMap = new Map();
 
-  try {
-    page = await crawlPage(item.url);
-  } catch (err) {
-    allIssues.push("crawl_exception");
-    progressStore.increment(auditId);
-    return;
-  }
+    const dupStore = {
+      titles: new Set(),
+      descriptions: new Set()
+    };
 
-  if (!page || page.error || page.blocked || page.timeout) {
-    allIssues.push("blocked_or_failed_page");
-    progressStore.increment(auditId);
-    return;
-  }
+    // -------- progress init --------
+    progressStore.init(auditId, maxPages);
 
+    // -------- sitemap discovery --------
+    try {
+      const sitemapUrls = await fetchSitemapUrls(url, maxPages);
+      sitemapUrls.forEach(sitemapUrl => {
+        queue.add(sitemapUrl, 1);
+      });
+    } catch {
+      // sitemap optional
+    }
 
-      // ---- canonical deduplication ----
-      if (!queue.markCanonical(page)) {
-        progressStore.increment(auditId);
+    // always crawl entry URL
+    queue.add(url, 0);
+
+    // -------- concurrent crawl loop --------
+    const active = new Set();
+
+    async function processNext() {
+      if (!queue.hasNext()) return;
+
+      if (Date.now() - crawlStart > MAX_CRAWL_TIME) {
+        allIssues.push("crawl_timeout_reached");
         return;
       }
 
-      const internalLinks = resolveInternalLinks(
-        page.url,
-        page.links || []
-      );
+      const item = queue.next();
+      if (!item) return;
 
-      // track incoming links
-      internalLinks.forEach(link => {
-        incomingLinkMap.set(link, (incomingLinkMap.get(link) || 0) + 1);
-      });
+      const task = (async () => {
+        let page;
 
-      // expand crawl
-      internalLinks.forEach(link => {
-        queue.add(link, item.depth + 1);
-      });
+        try {
+          page = await crawlPage(item.url);
+        } catch (err) {
+          allIssues.push("crawl_exception");
+          progressStore.increment(auditId);
+          return;
+        }
 
-      // -------- analyzers --------
-      const issues = [
-        ...analyzeIndexability(page),
-        ...analyzeRedirects(page),
-        ...analyzeArchitecture({
+        if (!page || page.error || page.blocked || page.timeout) {
+          allIssues.push("blocked_or_failed_page");
+          progressStore.increment(auditId);
+          return;
+        }
+
+        // ---- canonical deduplication ----
+        if (!queue.markCanonical(page)) {
+          progressStore.increment(auditId);
+          return;
+        }
+
+        const internalLinks = resolveInternalLinks(
+          page.url,
+          page.links || []
+        );
+
+        // track incoming links
+        internalLinks.forEach(link => {
+          incomingLinkMap.set(link, (incomingLinkMap.get(link) || 0) + 1);
+        });
+
+        // expand crawl
+        internalLinks.forEach(link => {
+          queue.add(link, item.depth + 1);
+        });
+
+        // -------- analyzers --------
+        const issues = [
+          ...analyzeIndexability(page),
+          ...analyzeRedirects(page),
+          ...analyzeArchitecture({
+            depth: item.depth,
+            outgoingLinks: internalLinks.length,
+            incomingLinks: incomingLinkMap.get(page.url) || 0
+          }),
+          ...analyzeDuplication(dupStore, page),
+          ...analyzePerformance(page),
+          ...analyzeSecurity(page.url, page.html)
+        ];
+
+        allIssues.push(...issues);
+
+        pages.push({
+          url: page.url,
+          status: page.status,
           depth: item.depth,
-          outgoingLinks: internalLinks.length,
-          incomingLinks: incomingLinkMap.get(page.url) || 0
-        }),
-        ...analyzeDuplication(dupStore, page),
-        ...analyzePerformance(page),
-        ...analyzeSecurity(page.url, page.html)
-      ];
+          internalLinks: internalLinks.length,
+          issues
+        });
 
-      allIssues.push(...issues);
+        progressStore.increment(auditId);
+      })();
 
-      pages.push({
-        url: page.url,
-        status: page.status,
-        depth: item.depth,
-        internalLinks: internalLinks.length,
-        issues
-      });
-
-      progressStore.increment(auditId);
-    })();
-
-    active.add(task);
-    task.finally(() => active.delete(task));
-  }
-
-  while (queue.hasNext() || active.size > 0) {
-    while (queue.hasNext() && active.size < CONCURRENCY) {
-      processNext();
+      active.add(task);
+      task.finally(() => active.delete(task));
     }
 
-    if (active.size > 0) {
-      await Promise.race(active);
+    while (queue.hasNext() || active.size > 0) {
+      while (queue.hasNext() && active.size < CONCURRENCY) {
+        processNext();
+      }
+
+      if (active.size > 0) {
+        await Promise.race(active);
+      }
     }
+
+    // -------- finalize --------
+    progressStore.finish(auditId);
+
+    const groupedIssues = buildIssues(allIssues);
+    const scoring = calculateScore(groupedIssues);
+
+    return res.json({
+      meta: {
+        auditId,
+        auditedUrl: url,
+        crawledPages: pages.length
+      },
+      summary: buildSummary(pages),
+      score: {
+        site: scoring.siteScore,
+        categories: scoring.categoryScores
+      },
+      issues: groupedIssues,
+      pages: pages.map(p => ({
+        url: p.url,
+        depth: p.depth,
+        status: p.status,
+        internalLinks: p.internalLinks,
+        issueCount: p.issues.length,
+        issues: p.issues
+      }))
+    });
+
+  } catch (err) {
+    console.error("Site audit crashed:", err);
+
+    return res.status(500).json({
+      error: "site_audit_failed",
+      message: "Audit failed due to an internal error"
+    });
   }
-
-  // -------- finalize --------
-  progressStore.finish(auditId);
-
-  const groupedIssues = buildIssues(allIssues);
-  const scoring = calculateScore(groupedIssues);
-
-  return res.json({
-    meta: {
-      auditId,
-      auditedUrl: url,
-      crawledPages: pages.length
-    },
-    summary: buildSummary(pages),
-    score: {
-      site: scoring.siteScore,
-      categories: scoring.categoryScores
-    },
-    issues: groupedIssues,
-    pages: pages.map(p => ({
-      url: p.url,
-      depth: p.depth,
-      status: p.status,
-      internalLinks: p.internalLinks,
-      issueCount: p.issues.length,
-      issues: p.issues
-    }))
-  });
 }
