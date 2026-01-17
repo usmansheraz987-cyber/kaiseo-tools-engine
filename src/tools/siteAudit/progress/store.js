@@ -1,6 +1,8 @@
 // src/tools/siteAudit/progress/store.js
 
 import { ProgressStore } from "./progressStore.js";
+import { RedisProgressStore } from "./redisStore.js";
+import Redis from "ioredis";
 
 class InMemoryProgressStore extends ProgressStore {
   constructor() {
@@ -33,8 +35,7 @@ class InMemoryProgressStore extends ProgressStore {
   }
 }
 
-export const progressStore = new InMemoryProgressStore();
-
+// ✅ SINGLE declaration
 let progressStore;
 
 if (process.env.REDIS_URL) {
