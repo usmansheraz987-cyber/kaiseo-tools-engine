@@ -1,49 +1,136 @@
 import crypto from "crypto";
-import { runAuditJob } from "./worker.js";
-import { progressStore } from "./progress/store.js";
-import { getResult } from "./result/store.js";
+import fs from "fs";
+import path from "path";
+
+import { CrawlQueue } from "./crawl/queue.js";
+import { crawlPage } from "./crawl/crawler.js";
+import { resolveInternalLinks } from "./crawl/urlUtils.js";
+import { fetchSitemapUrls } from "./crawl/sitemap.js";
+
+import { analyzeIndexability } from "./analyze/indexability.js";
+import { analyzeArchitecture } from "./analyze/architecture.js";
+import { analyzeDuplication } from "./analyze/duplication.js";
+import { analyzePerformance } from "./analyze/performance.js";
+import { analyzeSecurity } from "./analyze/security.js";
+import { analyzeRedirects } from "./analyze/redirects.js";
+
+import { buildIssues } from "./aggregate/issueBuilder.js";
+import { buildSummary } from "./aggregate/siteSummary.js";
+import { calculateScore } from "./score/scoreEngine.js";
+
+import { progressStore } from "./progress/fileStore.js";
 
 export async function runSiteAudit(req, res) {
   const { url, maxPages = 50, maxDepth = 3 } = req.body;
 
   if (!url) {
-    return res.status(400).json({ error: "URL is required" });
+    return res.status(400).json({ error: "URL required" });
   }
 
   const auditId = crypto.randomUUID();
 
-  // fire-and-forget
-  runAuditJob({ auditId, url, maxPages, maxDepth });
+  // START PROGRESS
+  progressStore.init(auditId, maxPages);
 
-  return res.json({
-    auditId,
-    status: "started"
-  });
-}
+  // RESPOND IMMEDIATELY
+  res.json({ auditId, status: "started" });
 
-export function getAuditProgress(req, res) {
-  const { auditId } = req.params;
-  const progress = progressStore.get(auditId);
+  // ---- BACKGROUND JOB ----
+  const queue = new CrawlQueue({ maxPages, maxDepth });
+  const pages = [];
+  const allIssues = [];
+  const incomingLinkMap = new Map();
 
-  if (!progress) {
-    return res.status(404).json({ error: "Not found" });
+  const dupStore = {
+    titles: new Set(),
+    descriptions: new Set()
+  };
+
+  try {
+    const sitemapUrls = await fetchSitemapUrls(url, maxPages);
+    sitemapUrls.forEach(u => queue.add(u, 1));
+  } catch {}
+
+  queue.add(url, 0);
+
+  while (queue.hasNext()) {
+    const item = queue.next();
+    if (!item) break;
+
+    try {
+      const page = await crawlPage(item.url);
+      if (!page || page.error) {
+        progressStore.increment(auditId);
+        continue;
+      }
+
+      if (!queue.markCanonical(page)) {
+        progressStore.increment(auditId);
+        continue;
+      }
+
+      const internalLinks = resolveInternalLinks(
+        page.url,
+        page.links || []
+      );
+
+      internalLinks.forEach(link => {
+        incomingLinkMap.set(link, (incomingLinkMap.get(link) || 0) + 1);
+        queue.add(link, item.depth + 1);
+      });
+
+      const issues = [
+        ...analyzeIndexability(page),
+        ...analyzeRedirects(page),
+        ...analyzeArchitecture({
+          depth: item.depth,
+          outgoingLinks: internalLinks.length,
+          incomingLinks: incomingLinkMap.get(page.url) || 0
+        }),
+        ...analyzeDuplication(dupStore, page),
+        ...analyzePerformance(page),
+        ...analyzeSecurity(page.url, page.html)
+      ];
+
+      allIssues.push(...issues);
+
+      pages.push({
+        url: page.url,
+        status: page.status,
+        depth: item.depth,
+        internalLinks: internalLinks.length,
+        issues
+      });
+
+      progressStore.increment(auditId);
+    } catch {
+      progressStore.increment(auditId);
+    }
   }
 
-  return res.json({
-    ...progress,
-    percent: progress.total
-      ? Math.round((progress.processed / progress.total) * 100)
-      : 0
-  });
-}
+  // SAVE RESULT
+  const resultDir = path.resolve("src/tools/siteAudit/results");
+  fs.mkdirSync(resultDir, { recursive: true });
 
-export function getAuditResult(req, res) {
-  const { auditId } = req.params;
-  const result = getResult(auditId);
+  const groupedIssues = buildIssues(allIssues);
+  const scoring = calculateScore(groupedIssues);
 
-  if (!result) {
-    return res.status(404).json({ error: "Not ready" });
-  }
+  const resultFile = path.join(resultDir, `${auditId}.json`);
 
-  return res.json(result);
+  fs.writeFileSync(
+    resultFile,
+    JSON.stringify(
+      {
+        meta: { auditId, auditedUrl: url },
+        summary: buildSummary(pages),
+        score: scoring,
+        issues: groupedIssues,
+        pages
+      },
+      null,
+      2
+    )
+  );
+
+  progressStore.finish(auditId, resultFile);
 }
