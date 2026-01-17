@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 import { CrawlQueue } from "./crawl/queue.js";
 import { crawlPage } from "./crawl/crawler.js";
 import { resolveInternalLinks } from "./crawl/urlUtils.js";
@@ -14,8 +17,7 @@ import { buildIssues } from "./aggregate/issueBuilder.js";
 import { buildSummary } from "./aggregate/siteSummary.js";
 import { calculateScore } from "./score/scoreEngine.js";
 
-import { progressStore } from "./progress/store.js";
-import { saveResult } from "./result/store.js";
+import { progressStore } from "./progress/fileStore.js";
 
 export async function runAuditJob({ auditId, url, maxPages, maxDepth }) {
   const MAX_CRAWL_TIME = 60_000;
@@ -55,10 +57,15 @@ export async function runAuditJob({ auditId, url, maxPages, maxDepth }) {
     if (!item) return;
 
     const task = (async () => {
-      const page = await crawlPage(item.url);
+      let page;
+      try {
+        page = await crawlPage(item.url);
+      } catch {
+        progressStore.increment(auditId);
+        return;
+      }
 
       if (!page || page.error || page.blocked || page.timeout) {
-        allIssues.push("blocked_or_failed_page");
         progressStore.increment(auditId);
         return;
       }
@@ -117,23 +124,29 @@ export async function runAuditJob({ auditId, url, maxPages, maxDepth }) {
     }
   }
 
-  progressStore.finish(auditId);
+  // ---- SAVE RESULT TO FILE ----
+  const resultDir = path.resolve("data/audits/results");
+  fs.mkdirSync(resultDir, { recursive: true });
+
+  const resultFile = path.join(resultDir, `${auditId}.json`);
 
   const groupedIssues = buildIssues(allIssues);
   const scoring = calculateScore(groupedIssues);
 
-  saveResult(auditId, {
-    meta: {
-      auditId,
-      auditedUrl: url,
-      crawledPages: pages.length
-    },
-    summary: buildSummary(pages),
-    score: {
-      site: scoring.siteScore,
-      categories: scoring.categoryScores
-    },
-    issues: groupedIssues,
-    pages
-  });
+  fs.writeFileSync(
+    resultFile,
+    JSON.stringify(
+      {
+        meta: { auditId, auditedUrl: url },
+        summary: buildSummary(pages),
+        score: scoring,
+        issues: groupedIssues,
+        pages
+      },
+      null,
+      2
+    )
+  );
+
+  progressStore.finish(auditId, resultFile);
 }
