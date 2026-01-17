@@ -18,11 +18,8 @@ import { buildIssues } from "./aggregate/issueBuilder.js";
 import { buildSummary } from "./aggregate/siteSummary.js";
 import { calculateScore } from "./score/scoreEngine.js";
 
-import {
-  initProgress,
-  incrementProgress,
-  finishProgress
-} from "./progress/store.js";
+import { progressStore } from "./progress/store.js";
+
 
 export async function runSiteAudit(req, res) {
   const { url, maxPages = 50, maxDepth = 3 } = req.body;
@@ -49,7 +46,8 @@ export async function runSiteAudit(req, res) {
   };
 
   // -------- progress init --------
-  initProgress(auditId, maxPages);
+ progressStore.init(auditId, maxPages);
+
 
   // -------- sitemap discovery --------
   try {
