@@ -1,8 +1,8 @@
-const express = require("express");
+import express from "express";
+import { decideSeoAction } from "../decisionEngine/controllers/decision.controller.js";
+
 const router = express.Router();
 
-const { decideSeoAction } = require("../decisionEngine/controllers/decision.controller");
+router.post("/decision-engine/decide", decideSeoAction);
 
-router.post("/decide", decideSeoAction);
-
-module.exports = router;
+export default router;
