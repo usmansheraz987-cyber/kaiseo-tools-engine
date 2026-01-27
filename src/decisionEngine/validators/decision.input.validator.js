@@ -1,6 +1,4 @@
-// src/decisionEngine/validators/decision.input.validator.js
-
-function validateDecisionInput(body) {
+export function validateDecisionInput(body) {
   if (!body || typeof body !== "object") {
     return { valid: false, error: "Request body is required" };
   }
@@ -27,7 +25,3 @@ function validateDecisionInput(body) {
 
   return { valid: true };
 }
-
-module.exports = {
-  validateDecisionInput,
-};
