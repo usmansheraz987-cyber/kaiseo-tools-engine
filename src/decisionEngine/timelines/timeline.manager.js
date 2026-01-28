@@ -1,9 +1,23 @@
 const store = new Map();
 
-export function addToTimeline(entry) {
-  const list = store.get(entry.pageUrl) || [];
-  list.push(entry);
-  store.set(entry.pageUrl, list);
+/*
+Each page timeline looks like:
+[
+  {
+    type: "decision" | "change" | "serp_snapshot" | "impact",
+    data: {},
+    timestamp
+  }
+]
+*/
+
+export function addTimelineEvent(pageUrl, event) {
+  const list = store.get(pageUrl) || [];
+  list.push({
+    ...event,
+    timestamp: new Date().toISOString(),
+  });
+  store.set(pageUrl, list);
 }
 
 export function getTimeline(pageUrl) {

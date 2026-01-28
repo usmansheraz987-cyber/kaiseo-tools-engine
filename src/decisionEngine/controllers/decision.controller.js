@@ -10,7 +10,7 @@ export async function decideSeoAction(req, res) {
     });
   }
 
-  const result = runDecisionEngine({ pageUrl, primaryQuery });
+  const result = await runDecisionEngine({ pageUrl, primaryQuery });
 
   return res.json({
     success: true,
