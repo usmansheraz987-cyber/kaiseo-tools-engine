@@ -1,4 +1,4 @@
-// src/decisionEngine/controllers/decision.controller.js
+import { runDecisionEngine } from "../decision.engine.js";
 
 export async function decideSeoAction(req, res) {
   const { pageUrl, primaryQuery } = req.body || {};
@@ -10,13 +10,10 @@ export async function decideSeoAction(req, res) {
     });
   }
 
+  const result = runDecisionEngine({ pageUrl, primaryQuery });
+
   return res.json({
     success: true,
-    data: {
-      pageUrl,
-      primaryQuery,
-      decision: "Intent mismatch detected. Fix page intent first.",
-      confidence: "medium",
-    },
+    data: result,
   });
 }
