@@ -12,6 +12,7 @@
     "express": "^5.2.1",
     "fast-xml-parser": "^5.3.3",
     "ioredis": "^5.9.2",
+    "jsdom": "^27.4.0",
     "node-fetch": "^3.3.2",
     "robots-parser": "^3.0.1"
   }
