@@ -9,23 +9,28 @@ const router = express.Router();
  POST /api/pagefit
  Body example:
  {
-   "html": "<html>...</html>",
-   "phases": [1]
+   "html": "<html>...</html>"
+ }
+ OR
+ {
+   "url": "https://example.com"
  }
 */
 
 router.post("/", async (req, res) => {
   try {
-    const { html, phases } = req.body;
+    const { html, url, phases } = req.body;
 
-    if (!html) {
+    // ✅ UPDATED VALIDATION (THIS FIXES YOUR ISSUE)
+    if (!html && !url) {
       return res.status(400).json({
-        error: "HTML input is required",
+        error: "Either HTML or URL is required",
       });
     }
 
     const result = await PageFit.run({
       html,
+      url,
       phases: Array.isArray(phases) ? phases : [1],
     });
 
