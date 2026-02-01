@@ -45,3 +45,26 @@ export function createPhase1Result({ issues, stats }) {
     stats,
   };
 }
+// ---- PHASE 3 VERDICTS (LOCKED) ----
+export const PHASE3_VERDICTS = {
+  QUALIFIED: "qualified_to_rank",
+  STRUCTURALLY_BLOCKED: "structurally_blocked",
+  INTENT_MISMATCH: "intent_mismatch",
+  DO_NOT_TARGET: "do_not_target",
+};
+
+/*
+ Phase 3 final output shape
+*/
+export function createPhase3Result({
+  verdict,
+  reasons = [],
+  signals = {},
+}) {
+  return {
+    phase: 3,
+    verdict,
+    reasons,
+    signals,
+  };
+}

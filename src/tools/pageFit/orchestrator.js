@@ -2,14 +2,17 @@
 
 import { JSDOM } from "jsdom";
 import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
+
 import runPhase1 from "./phase1/index.js";
 import { runPhase2 } from "./phase2/index.js";
+import runPhase3 from "./phase3/index.js";
 
 export default async function runPageFit({
   html,
   url,
   pageUrl = null,
   phases = [1],
+  primaryKeyword = null, // Phase 3 only
 }) {
   let finalHtml = html || null;
   let fetchMeta = null;
@@ -48,12 +51,26 @@ export default async function runPageFit({
     results.phase2 = runPhase2(dom);
   }
 
+  // ---- PHASE 3 ----
+  if (phases.includes(3)) {
+    if (!primaryKeyword) {
+      throw new Error("Phase 3 requires a primaryKeyword");
+    }
+
+    results.phase3 = runPhase3({
+      dom,
+      pageUrl: resolvedUrl,
+      primaryKeyword,
+    });
+  }
+
   return {
     tool: "PageFit SEO",
     executedPhases: phases,
     input: {
       htmlProvided: Boolean(html),
       urlProvided: Boolean(url),
+      primaryKeywordProvided: Boolean(primaryKeyword),
     },
     fetchMeta, // safe to expose
     results,

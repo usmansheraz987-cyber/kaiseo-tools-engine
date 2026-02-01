@@ -8,5 +8,19 @@ import runPageFit from "./orchestrator.js";
 */
 
 export default {
-  run: runPageFit,
+  run: ({
+    html,
+    url,
+    pageUrl,
+    phases = [1],
+    primaryKeyword = null, // Phase 3 only
+  }) => {
+    return runPageFit({
+      html,
+      url,
+      pageUrl,
+      phases,
+      primaryKeyword,
+    });
+  },
 };
