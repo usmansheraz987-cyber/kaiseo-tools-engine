@@ -1,5 +1,3 @@
-// src/tools/pageFit/orchestrator.js
-
 import { JSDOM } from "jsdom";
 import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
 
@@ -8,13 +6,12 @@ import { runPhase2 } from "./phase2/index.js";
 import runPhase3 from "./phase3/index.js";
 import runPhase4 from "./phase4/index.js";
 
-
 export default async function runPageFit({
   html,
   url,
   pageUrl = null,
   phases = [1],
-  primaryKeyword = null, // Phase 3 only
+  primaryKeyword = null,
 }) {
   let finalHtml = html || null;
   let fetchMeta = null;
@@ -66,19 +63,7 @@ export default async function runPageFit({
     });
   }
 
-  return {
-    tool: "PageFit SEO",
-    executedPhases: phases,
-    input: {
-      htmlProvided: Boolean(html),
-      urlProvided: Boolean(url),
-      primaryKeywordProvided: Boolean(primaryKeyword),
-    },
-    fetchMeta, // safe to expose
-    results,
-  };
-}
-  // ---- PHASE 4 ----
+  // ---- PHASE 4 (✅ MUST BE HERE) ----
   if (phases.includes(4)) {
     if (!results.phase1 || !results.phase2 || !results.phase3) {
       throw new Error("Phase 4 requires Phase 1, 2, and 3 to be executed");
@@ -91,3 +76,15 @@ export default async function runPageFit({
     });
   }
 
+  return {
+    tool: "PageFit SEO",
+    executedPhases: phases,
+    input: {
+      htmlProvided: Boolean(html),
+      urlProvided: Boolean(url),
+      primaryKeywordProvided: Boolean(primaryKeyword),
+    },
+    fetchMeta,
+    results,
+  };
+}
