@@ -4,20 +4,27 @@
  * Extracts clean main content from a jsdom document
  * This is a FACT extractor, not an analyzer
  */
+// src/tools/pageFit/phase2/extractor.js
+
+/**
+ * Extracts clean main content from a jsdom document
+ * Defensive by design (supports fragments + full HTML)
+ */
 export function extractMainContent(document) {
   if (!document) {
-    return {
-      text: "",
-      html: "",
-      wordCount: 0,
-      paragraphCount: 0
-    };
+    return emptyResult();
   }
 
-  // 1. Clone body so we don’t mutate original DOM
-  const bodyClone = document.body.cloneNode(true);
+  const body = document.body || document.documentElement;
 
-  // 2. Remove non-content elements
+  if (!body) {
+    return emptyResult();
+  }
+
+  // Clone safely
+  const bodyClone = body.cloneNode(true);
+
+  // Remove non-content elements
   const REMOVE_SELECTORS = [
     "header",
     "footer",
@@ -35,37 +42,47 @@ export function extractMainContent(document) {
     bodyClone.querySelectorAll(selector).forEach(el => el.remove());
   });
 
-  // 3. Prefer <main> if present
+  // Prefer <main>
   let mainElement = bodyClone.querySelector("main");
 
-  // Fallback: largest text container
+  // Fallback: largest readable container
   if (!mainElement) {
-    const candidates = Array.from(bodyClone.querySelectorAll("article, section, div"));
+    const candidates = Array.from(
+      bodyClone.querySelectorAll("article, section, div")
+    );
 
-    mainElement = candidates.reduce(
-      (best, current) => {
-        const textLength = current.innerText?.trim().length || 0;
-        if (textLength > best.length) {
-          return { element: current, length: textLength };
-        }
-        return best;
-      },
-      { element: bodyClone, length: bodyClone.innerText?.trim().length || 0 }
-    ).element;
+    mainElement =
+      candidates
+        .map(el => ({
+          el,
+          length: (el.textContent || "").trim().length,
+        }))
+        .sort((a, b) => b.length - a.length)[0]?.el || bodyClone;
   }
 
-  // 4. Extract paragraphs
+  // Extract paragraphs safely
   const paragraphs = Array.from(mainElement.querySelectorAll("p"))
-    .map(p => p.innerText.trim())
+    .map(p => (p.textContent || "").trim())
     .filter(Boolean);
 
   const text = paragraphs.join("\n\n");
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const wordCount = text
+    ? text.split(/\s+/).filter(Boolean).length
+    : 0;
 
   return {
     text,
-    html: mainElement.innerHTML.trim(),
+    html: mainElement.innerHTML || "",
     wordCount,
-    paragraphCount: paragraphs.length
+    paragraphCount: paragraphs.length,
+  };
+}
+
+function emptyResult() {
+  return {
+    text: "",
+    html: "",
+    wordCount: 0,
+    paragraphCount: 0,
   };
 }
