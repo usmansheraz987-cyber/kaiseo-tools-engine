@@ -1,12 +1,11 @@
 import { classifyActions } from "./classifier.js";
 import { prioritizeActions } from "./prioritizer.js";
-import { assessRisk } from "./riskAssessor.js";
+import riskAssessor from "./riskAssessor.js"; // ✅ FIXED
 import { estimateImpact } from "./impactEstimator.js";
 import { reduceActions } from "./actionReducer.js";
 
 export default function runPhase4({ results }) {
   const actions = [];
-
   const phase3 = results?.phase3;
 
   if (!phase3) {
@@ -17,7 +16,7 @@ export default function runPhase4({ results }) {
     };
   }
 
-  // ✅ FIX 1: correct over-optimization path
+  // Over-optimization → action
   if (phase3?.overOptimization?.overOptimized === true) {
     actions.push({
       type: "reduce_keyword_density",
@@ -27,7 +26,7 @@ export default function runPhase4({ results }) {
     });
   }
 
-  // ✅ FIX 2: correct structural weaknesses path
+  // Missing summary → action
   if (
     Array.isArray(phase3?.structuralWeaknesses) &&
     phase3.structuralWeaknesses.includes("summary")
@@ -42,7 +41,7 @@ export default function runPhase4({ results }) {
 
   const classified = classifyActions(actions);
   const prioritized = prioritizeActions(classified);
-  const withRisk = assessRisk(prioritized);
+  const withRisk = riskAssessor(prioritized); // ✅ FIXED
   const withImpact = estimateImpact(withRisk);
   const finalActions = reduceActions(withImpact);
 
