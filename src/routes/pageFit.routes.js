@@ -7,21 +7,32 @@ const router = express.Router();
 
 /*
  POST /api/pagefit
- Body example:
+ Body examples:
+
  {
-   "html": "<html>...</html>"
+   "html": "<html>...</html>",
+   "phases": [1,2,3],
+   "primaryKeyword": "what is seo"
  }
+
  OR
+
  {
-   "url": "https://example.com"
+   "url": "https://example.com",
+   "phases": [3],
+   "primaryKeyword": "best seo tools"
  }
 */
 
 router.post("/", async (req, res) => {
   try {
-    const { html, url, phases } = req.body;
+    const {
+      html,
+      url,
+      phases,
+      primaryKeyword, // ✅ REQUIRED FOR PHASE 3
+    } = req.body;
 
-    // ✅ UPDATED VALIDATION (THIS FIXES YOUR ISSUE)
     if (!html && !url) {
       return res.status(400).json({
         error: "Either HTML or URL is required",
@@ -32,6 +43,7 @@ router.post("/", async (req, res) => {
       html,
       url,
       phases: Array.isArray(phases) ? phases : [1],
+      primaryKeyword, // ✅ FORWARDED CORRECTLY
     });
 
     return res.json(result);
