@@ -6,6 +6,8 @@ import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
 import runPhase1 from "./phase1/index.js";
 import { runPhase2 } from "./phase2/index.js";
 import runPhase3 from "./phase3/index.js";
+import runPhase4 from "./phase4/index.js";
+
 
 export default async function runPageFit({
   html,
@@ -76,3 +78,16 @@ export default async function runPageFit({
     results,
   };
 }
+  // ---- PHASE 4 ----
+  if (phases.includes(4)) {
+    if (!results.phase1 || !results.phase2 || !results.phase3) {
+      throw new Error("Phase 4 requires Phase 1, 2, and 3 to be executed");
+    }
+
+    results.phase4 = runPhase4({
+      phase1: results.phase1,
+      phase2: results.phase2,
+      phase3: results.phase3,
+    });
+  }
+
