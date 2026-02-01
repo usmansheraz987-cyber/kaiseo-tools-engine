@@ -1,8 +1,8 @@
 // src/tools/pageFit/phase3/verdict.js
 
 /*
- Converts Phase 3 signals into a final verdict.
- This file contains ZERO detection logic.
+ Phase 3 Verdict Engine (ELIGIBILITY ONLY)
+ No fixable penalties live here.
 */
 
 import { PHASE3_VERDICTS } from "../schemas.js";
@@ -10,40 +10,31 @@ import { PHASE3_VERDICTS } from "../schemas.js";
 export default function buildVerdict({
   intentResult,
   eligibilityResult,
-  overOptimizationResult,
   serpModel,
 }) {
   const reasons = [];
 
-  // ---- STRUCTURAL BLOCK ----
+  /* ------------------------
+     HARD STRUCTURAL BLOCK
+  -------------------------*/
   if (!eligibilityResult.eligible) {
     reasons.push({
       type: "structure",
       reason: eligibilityResult.reason,
-      details: eligibilityResult,
+      hardMissing: eligibilityResult.hardMissing || [],
+      softMissing: eligibilityResult.softMissing || [],
     });
 
     return {
       verdict: PHASE3_VERDICTS.STRUCTURALLY_BLOCKED,
       reasons,
+      structuralWeaknesses: [],
     };
   }
 
-  // ---- OVER OPTIMIZATION ----
-  if (overOptimizationResult.overOptimized) {
-    reasons.push({
-      type: "over_optimization",
-      reason: overOptimizationResult.reason,
-      details: overOptimizationResult,
-    });
-
-    return {
-      verdict: PHASE3_VERDICTS.DO_NOT_TARGET,
-      reasons,
-    };
-  }
-
-  // ---- INTENT MISMATCH ----
+  /* ------------------------
+     INTENT MISMATCH
+  -------------------------*/
   if (
     serpModel.allowedPageRoles &&
     !serpModel.allowedPageRoles.includes("pillar") &&
@@ -59,17 +50,32 @@ export default function buildVerdict({
     return {
       verdict: PHASE3_VERDICTS.INTENT_MISMATCH,
       reasons,
+      structuralWeaknesses: [],
     };
   }
 
-  // ---- QUALIFIED ----
+  /* ------------------------
+     QUALIFIED (WITH WEAKNESSES)
+  -------------------------*/
+  if (
+    eligibilityResult.structuralWeaknesses &&
+    eligibilityResult.structuralWeaknesses.length > 0
+  ) {
+    reasons.push({
+      type: "structure",
+      reason: "non_blocking_structural_weaknesses",
+      weaknesses: eligibilityResult.structuralWeaknesses,
+    });
+  }
+
   reasons.push({
     type: "pass",
-    reason: "meets_structural_and_intent_requirements",
+    reason: "meets_competitive_requirements",
   });
 
   return {
     verdict: PHASE3_VERDICTS.QUALIFIED,
     reasons,
+    structuralWeaknesses: eligibilityResult.structuralWeaknesses || [],
   };
 }
