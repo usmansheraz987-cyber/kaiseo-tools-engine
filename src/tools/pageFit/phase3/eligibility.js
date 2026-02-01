@@ -1,8 +1,8 @@
 // src/tools/pageFit/phase3/eligibility.js
 
 /*
- Structural eligibility checker (REFINED).
- Detects FUNCTIONAL sections, not literal labels.
+ Structural eligibility checker (SEVERITY-AWARE).
+ Phase 3 decides COMPETITION eligibility, not perfection.
 */
 
 function getBody(dom) {
@@ -18,10 +18,10 @@ function wordCount(text) {
   return text.trim().split(/\s+/).length;
 }
 
-/*
- INTRODUCTION:
- First meaningful text before first H2
-*/
+/* ------------------------
+   SECTION DETECTORS
+-------------------------*/
+
 function hasIntroduction(dom) {
   const body = getBody(dom);
   if (!body) return false;
@@ -37,43 +37,18 @@ function hasIntroduction(dom) {
   return wordCount(introText) >= 80;
 }
 
-/*
- EXPLANATION:
- Multiple H2/H3 sections that explain concepts
-*/
 function hasExplanation(dom) {
   const headings = dom.querySelectorAll("h2, h3");
   if (headings.length < 2) return false;
 
-  const explanationSignals = [
-    "what",
-    "how",
-    "why",
-    "means",
-    "work",
-    "guide",
-    "learn",
-  ];
-
-  let hits = 0;
-
-  headings.forEach(h => {
-    const text = h.textContent.toLowerCase();
-    if (explanationSignals.some(s => text.includes(s))) {
-      hits++;
-    }
-  });
-
-  return hits >= 1;
+  const signals = ["what", "how", "why", "means", "work", "guide", "learn"];
+  return Array.from(headings).some(h =>
+    signals.some(s => h.textContent.toLowerCase().includes(s))
+  );
 }
 
-/*
- EXAMPLES:
- Lists, step breakdowns, or explicit example phrases
-*/
 function hasExamples(dom) {
-  const lists = dom.querySelectorAll("ul, ol");
-  if (lists.length > 0) return true;
+  if (dom.querySelectorAll("ul, ol").length > 0) return true;
 
   const text = getText(dom).toLowerCase();
   return (
@@ -83,36 +58,49 @@ function hasExamples(dom) {
   );
 }
 
-/*
- SUMMARY:
- Ending section or takeaway-style conclusion
-*/
 function hasSummary(dom) {
   const headings = Array.from(dom.querySelectorAll("h2, h3"));
   if (headings.length === 0) return false;
 
-  const lastHeading = headings[headings.length - 1].textContent.toLowerCase();
-
+  const last = headings[headings.length - 1].textContent.toLowerCase();
   return (
-    lastHeading.includes("summary") ||
-    lastHeading.includes("conclusion") ||
-    lastHeading.includes("key takeaways") ||
-    lastHeading.includes("final thoughts")
+    last.includes("summary") ||
+    last.includes("conclusion") ||
+    last.includes("key takeaways") ||
+    last.includes("final thoughts")
   );
 }
+
+/* ------------------------
+   ELIGIBILITY LOGIC
+-------------------------*/
 
 export default function checkEligibility({ dom, serpModel }) {
   if (!dom) {
     return {
       eligible: false,
       reason: "no_dom",
-      missingSections: serpModel.requiredSections,
+      hardMissing: serpModel.requiredSections,
+      softMissing: [],
     };
   }
 
   const text = getText(dom);
   const wc = wordCount(text);
 
+  // ---- DEPTH BLOCKER ----
+  if (wc < serpModel.minimumWordCount) {
+    return {
+      eligible: false,
+      reason: "insufficient_depth",
+      wordCount: wc,
+      requiredMinimum: serpModel.minimumWordCount,
+      hardMissing: [],
+      softMissing: [],
+    };
+  }
+
+  // ---- SECTION CHECKS ----
   const sectionChecks = {
     introduction: hasIntroduction(dom),
     explanation: hasExplanation(dom),
@@ -120,35 +108,29 @@ export default function checkEligibility({ dom, serpModel }) {
     summary: hasSummary(dom),
   };
 
-  const missingSections = serpModel.requiredSections.filter(
-    s => !sectionChecks[s]
-  );
+  // ---- SEVERITY TIERS ----
+  const HARD_SECTIONS = ["introduction", "explanation", "examples"];
+  const SOFT_SECTIONS = ["summary"];
 
-  // ---- HARD BLOCK: DEPTH ----
-  if (wc < serpModel.minimumWordCount) {
+  const hardMissing = HARD_SECTIONS.filter(s => !sectionChecks[s]);
+  const softMissing = SOFT_SECTIONS.filter(s => !sectionChecks[s]);
+
+  // ---- HARD BLOCK ----
+  if (hardMissing.length > 0) {
     return {
       eligible: false,
-      reason: "insufficient_depth",
-      wordCount: wc,
-      requiredMinimum: serpModel.minimumWordCount,
-      missingSections,
-    };
-  }
-
-  // ---- HARD BLOCK: STRUCTURE ----
-  if (missingSections.length > 0) {
-    return {
-      eligible: false,
-      reason: "missing_required_sections",
-      missingSections,
+      reason: "missing_critical_sections",
+      hardMissing,
+      softMissing,
       sectionChecks,
     };
   }
 
-  // ---- PASSED ----
+  // ---- ELIGIBLE (WITH POSSIBLE WEAKNESSES) ----
   return {
     eligible: true,
-    wordCount: wc,
+    structuralWeaknesses: softMissing,
     sectionChecks,
+    wordCount: wc,
   };
 }
