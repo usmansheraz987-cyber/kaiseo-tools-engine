@@ -1,8 +1,8 @@
-import { classifyActions } from "./classifier.js";
-import { prioritizeActions } from "./prioritizer.js";
-import riskAssessor from "./riskAssessor.js"; // ✅ FIXED
-import { estimateImpact } from "./impactEstimator.js";
-import { reduceActions } from "./actionReducer.js";
+import classifyActions from "./classifier.js";
+import prioritizeActions from "./prioritizer.js";
+import riskAssessor from "./riskAssessor.js";
+import estimateImpact from "./impactEstimator.js";
+import reduceActions from "./actionReducer.js";
 
 export default function runPhase4({ results }) {
   const actions = [];
@@ -16,17 +16,16 @@ export default function runPhase4({ results }) {
     };
   }
 
-  // Over-optimization → action
+  // Over-optimization → fix
   if (phase3?.overOptimization?.overOptimized === true) {
     actions.push({
       type: "reduce_keyword_density",
       source: "phase3",
-      priority: 1,
       reason: "keyword_density_too_high"
     });
   }
 
-  // Missing summary → action
+  // Missing summary → fix
   if (
     Array.isArray(phase3?.structuralWeaknesses) &&
     phase3.structuralWeaknesses.includes("summary")
@@ -34,14 +33,13 @@ export default function runPhase4({ results }) {
     actions.push({
       type: "add_summary_section",
       source: "phase3",
-      priority: 2,
       reason: "missing_summary_section"
     });
   }
 
   const classified = classifyActions(actions);
   const prioritized = prioritizeActions(classified);
-  const withRisk = riskAssessor(prioritized); // ✅ FIXED
+  const withRisk = riskAssessor(prioritized);
   const withImpact = estimateImpact(withRisk);
   const finalActions = reduceActions(withImpact);
 
