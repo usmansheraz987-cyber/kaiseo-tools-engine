@@ -1,10 +1,9 @@
 // src/tools/pageFit/orchestrator.js
 
-
-
 import { JSDOM } from "jsdom";
 import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
 import runPhase1 from "./phase1/index.js";
+import { runPhase2 } from "./phase2/index.js";
 
 export default async function runPageFit({
   html,
@@ -36,11 +35,17 @@ export default async function runPageFit({
 
   const results = {};
 
+  // ---- PHASE 1 ----
   if (phases.includes(1)) {
     results.phase1 = runPhase1({
       dom,
       pageUrl: resolvedUrl,
     });
+  }
+
+  // ---- PHASE 2 ----
+  if (phases.includes(2)) {
+    results.phase2 = runPhase2(dom);
   }
 
   return {
@@ -50,8 +55,7 @@ export default async function runPageFit({
       htmlProvided: Boolean(html),
       urlProvided: Boolean(url),
     },
-    fetchMeta, // safe to expose, no secrets
+    fetchMeta, // safe to expose
     results,
   };
 }
-
