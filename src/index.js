@@ -9,7 +9,7 @@ import metaGeneratorRoute from "./routes/metaGenerator.route.js";
 import contentImproverRoutes from "./routes/contentImprover.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import seoAnalyzerRoutes from "./routes/seoAnalyzer.routes.js";
-import pageFitRoutes from "./routes/pageFit.routes.js";
+
 
 
 
@@ -30,7 +30,7 @@ app.use("/api", metaGeneratorRoute);
 app.use("/api", contentImproverRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", seoAnalyzerRoutes);
-app.use("/api/pagefit", pageFitRoutes);
+
 
 
 
