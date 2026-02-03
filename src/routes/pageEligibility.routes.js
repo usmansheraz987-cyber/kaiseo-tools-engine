@@ -1,5 +1,5 @@
 import express from "express";
-import fetchPage from "../lib/fetchPage.js";
+import fetchPage from "../lib/fetcher/fetchPage.js";
 import { checkPageEligibility } from "../tools/pageEligibility/index.js";
 
 const router = express.Router();
@@ -9,17 +9,15 @@ router.post("/page-eligibility", async (req, res, next) => {
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({
-        error: "URL is required"
-      });
+      return res.status(400).json({ error: "URL is required" });
     }
 
     const fetchResult = await fetchPage(url);
-    const eligibilityResult = checkPageEligibility(fetchResult);
+    const result = checkPageEligibility(fetchResult);
 
-    return res.json(eligibilityResult);
-  } catch (error) {
-    return next(error);
+    return res.json(result);
+  } catch (err) {
+    return next(err);
   }
 });
 
