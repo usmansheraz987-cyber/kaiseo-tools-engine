@@ -7,16 +7,19 @@ const router = express.Router();
 router.post("/page-eligibility", async (req, res, next) => {
   try {
     const { url } = req.body;
+
     if (!url) {
-      return res.status(400).json({ error: "URL is required" });
+      return res.status(400).json({
+        error: "URL is required"
+      });
     }
 
     const fetchResult = await fetchPage(url);
-    const result = checkPageEligibility(fetchResult);
+    const eligibilityResult = checkPageEligibility(fetchResult);
 
-    res.json(result);
-  } catch (err) {
-    next(err);
+    return res.json(eligibilityResult);
+  } catch (error) {
+    return next(error);
   }
 });
 
