@@ -1,9 +1,11 @@
 import fetch from "node-fetch";
 import { FETCH_RULES } from "./fetchRules.js";
 import { protectAgainstSSRF } from "./ssrfGuard.js";
+import { renderPage } from "./renderPage.js";
 
-export async function fetchPageHtml(url) {
-  // 🔒 SSRF protection (per request)
+export async function fetchPageHtml(url, options = {}) {
+  const { render = false } = options;
+
   await protectAgainstSSRF(url);
 
   const controller = new AbortController();
@@ -48,8 +50,15 @@ export async function fetchPageHtml(url) {
     throw new Error("HTML_TOO_LARGE");
   }
 
+  let renderedHtml = null;
+
+  if (render === true) {
+    renderedHtml = await renderPage(url, FETCH_RULES.timeoutMs);
+  }
+
   return {
     html,
+    renderedHtml,
     meta: {
       httpStatus: response.status,
       finalUrl: response.url,
