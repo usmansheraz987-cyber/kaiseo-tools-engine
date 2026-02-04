@@ -1,5 +1,5 @@
 import express from "express";
-import fetchPage from "../lib/fetcher/fetchPage.js";
+import { fetchPage } from "../lib/fetcher/fetchPage.js";
 import { checkPageEligibility } from "../tools/pageEligibility/index.js";
 
 const router = express.Router();
