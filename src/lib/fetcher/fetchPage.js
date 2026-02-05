@@ -2,10 +2,12 @@ import fetch from "node-fetch";
 import { FETCH_RULES } from "./fetchRules.js";
 import { protectAgainstSSRF } from "./ssrfGuard.js";
 import { renderPage } from "./renderPage.js";
+import { shouldRender } from "./shouldRender.js";
 
 export async function fetchPageHtml(url, options = {}) {
   const { render = false } = options;
 
+  // 🔒 SSRF protection
   await protectAgainstSSRF(url);
 
   const controller = new AbortController();
@@ -50,10 +52,19 @@ export async function fetchPageHtml(url, options = {}) {
     throw new Error("HTML_TOO_LARGE");
   }
 
+  // 🧠 Smart render policy
   let renderedHtml = null;
+  let renderUsed = false;
 
-  if (render === true) {
-    renderedHtml = await renderPage(url, FETCH_RULES.timeoutMs);
+  if (render === true || shouldRender(html)) {
+    try {
+      renderedHtml = await renderPage(url, FETCH_RULES.timeoutMs);
+      renderUsed = true;
+    } catch {
+      // Rendering failed → safe fallback to HTML-only
+      renderedHtml = null;
+      renderUsed = false;
+    }
   }
 
   return {
@@ -62,7 +73,8 @@ export async function fetchPageHtml(url, options = {}) {
     meta: {
       httpStatus: response.status,
       finalUrl: response.url,
-      pageSizeKB: Math.round(size / 1024)
+      pageSizeKB: Math.round(size / 1024),
+      renderUsed
     }
   };
 }
