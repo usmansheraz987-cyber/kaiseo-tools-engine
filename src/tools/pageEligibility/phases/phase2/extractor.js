@@ -1,5 +1,5 @@
 export function extractPhase2Signals(fetchResult) {
-  const html = fetchResult.html || "";
+  const html = typeof fetchResult.html === "string" ? fetchResult.html : "";
   const htmlText = stripTags(html);
 
   return {
