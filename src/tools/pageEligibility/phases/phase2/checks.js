@@ -2,7 +2,11 @@ export function runPhase2Checks(signals) {
   return [
     {
       check: "jsRequired",
-      pass: !(signals.htmlTextLength < 300 && signals.renderedTextLength > 800)
+      pass: !(
+        signals.renderUsed &&
+        signals.htmlTextLength < 300 &&
+        signals.visibleTextLength > 800
+      )
     },
     {
       check: "emptyHtmlShell",
@@ -10,7 +14,10 @@ export function runPhase2Checks(signals) {
     },
     {
       check: "soft404",
-      pass: !looksLikeSoft404(signals.renderedText, signals.renderedTextLength)
+      pass: !looksLikeSoft404(
+        signals.visibleText,
+        signals.visibleTextLength
+      )
     },
     {
       check: "renderMismatch",
@@ -36,7 +43,8 @@ export function runPhase2Checks(signals) {
 }
 
 function isLargeMismatch(signals) {
-  return signals.renderedTextLength > signals.htmlTextLength * 5;
+  if (!signals.renderUsed) return false;
+  return signals.visibleTextLength > signals.htmlTextLength * 5;
 }
 
 function looksLikeSoft404(text, length) {
@@ -54,7 +62,7 @@ function looksLikeSoft404(text, length) {
 }
 
 function isBoilerplateDominant(signals) {
-  if (signals.renderedTextLength === 0) return true;
-  const ratio = signals.htmlTextLength / signals.renderedTextLength;
+  if (signals.visibleTextLength === 0) return true;
+  const ratio = signals.htmlTextLength / signals.visibleTextLength;
   return ratio < 0.15;
 }

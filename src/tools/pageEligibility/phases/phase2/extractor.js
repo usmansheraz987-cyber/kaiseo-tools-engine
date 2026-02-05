@@ -1,26 +1,37 @@
 export function extractPhase2Signals(fetchResult) {
   const html = fetchResult.html || "";
-  const rendered = fetchResult.renderedHtml || "";
+  const rendered = fetchResult.renderedHtml || null;
+
+  // 👁️ What Google actually sees
+  const visibleDom = rendered || html;
 
   const htmlText = stripTags(html);
-  const renderedText = stripTags(rendered);
+  const visibleText = stripTags(visibleDom);
 
   return {
+    // Raw lengths
     htmlLength: html.trim().length,
-    renderedLength: rendered.trim().length,
+    renderedLength: rendered ? rendered.trim().length : 0,
 
+    // Text lengths
     htmlTextLength: htmlText.length,
-    renderedTextLength: renderedText.length,
+    visibleTextLength: visibleText.length,
 
+    // Text bodies
     htmlText,
-    renderedText,
+    visibleText,
 
+    // Content presence
     hasHtmlContent: htmlText.length > 300,
-    hasRenderedContent: renderedText.length > 500,
+    hasVisibleContent: visibleText.length > 500,
 
-    hiddenContentDetected: detectHiddenContent(rendered),
-    lazyLoadDetected: detectLazyLoad(rendered),
-    aboveTheFoldTextLength: extractAboveTheFoldText(rendered).length
+    // Visibility signals (render-aware)
+    hiddenContentDetected: detectHiddenContent(visibleDom),
+    lazyLoadDetected: detectLazyLoad(visibleDom),
+    aboveTheFoldTextLength: extractAboveTheFoldText(visibleDom).length,
+
+    // Render status
+    renderUsed: Boolean(rendered)
   };
 }
 
@@ -33,18 +44,16 @@ function stripTags(input) {
     .trim();
 }
 
-function detectHiddenContent(renderedHtml) {
-  return /display\s*:\s*none|visibility\s*:\s*hidden|hidden="/i.test(renderedHtml);
+function detectHiddenContent(dom) {
+  return /display\s*:\s*none|visibility\s*:\s*hidden|hidden="/i.test(dom);
 }
 
-function detectLazyLoad(renderedHtml) {
-  return /loading\s*=\s*["']lazy["']|data-src=|data-lazy=/i.test(renderedHtml);
+function detectLazyLoad(dom) {
+  return /loading\s*=\s*["']lazy["']|data-src=|data-lazy=/i.test(dom);
 }
 
-function extractAboveTheFoldText(renderedHtml) {
-  const bodyMatch = renderedHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+function extractAboveTheFoldText(dom) {
+  const bodyMatch = dom.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   if (!bodyMatch) return "";
-
-  // crude but deterministic: first ~3000 chars
   return stripTags(bodyMatch[1].slice(0, 3000));
 }
