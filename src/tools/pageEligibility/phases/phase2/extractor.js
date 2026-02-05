@@ -1,37 +1,16 @@
 export function extractPhase2Signals(fetchResult) {
   const html = fetchResult.html || "";
-  const rendered = fetchResult.renderedHtml || null;
-
-  // 👁️ What Google actually sees
-  const visibleDom = rendered || html;
-
   const htmlText = stripTags(html);
-  const visibleText = stripTags(visibleDom);
 
   return {
-    // Raw lengths
     htmlLength: html.trim().length,
-    renderedLength: rendered ? rendered.trim().length : 0,
-
-    // Text lengths
     htmlTextLength: htmlText.length,
-    visibleTextLength: visibleText.length,
-
-    // Text bodies
     htmlText,
-    visibleText,
 
-    // Content presence
     hasHtmlContent: htmlText.length > 300,
-    hasVisibleContent: visibleText.length > 500,
-
-    // Visibility signals (render-aware)
-    hiddenContentDetected: detectHiddenContent(visibleDom),
-    lazyLoadDetected: detectLazyLoad(visibleDom),
-    aboveTheFoldTextLength: extractAboveTheFoldText(visibleDom).length,
-
-    // Render status
-    renderUsed: Boolean(rendered)
+    aboveTheFoldTextLength: extractAboveTheFoldText(html).length,
+    hiddenContentDetected: detectHiddenContent(html),
+    lazyLoadDetected: detectLazyLoad(html)
   };
 }
 
@@ -44,16 +23,16 @@ function stripTags(input) {
     .trim();
 }
 
-function detectHiddenContent(dom) {
-  return /display\s*:\s*none|visibility\s*:\s*hidden|hidden="/i.test(dom);
+function detectHiddenContent(html) {
+  return /display\s*:\s*none|visibility\s*:\s*hidden|hidden="/i.test(html);
 }
 
-function detectLazyLoad(dom) {
-  return /loading\s*=\s*["']lazy["']|data-src=|data-lazy=/i.test(dom);
+function detectLazyLoad(html) {
+  return /loading\s*=\s*["']lazy["']|data-src=|data-lazy=/i.test(html);
 }
 
-function extractAboveTheFoldText(dom) {
-  const bodyMatch = dom.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+function extractAboveTheFoldText(html) {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   if (!bodyMatch) return "";
   return stripTags(bodyMatch[1].slice(0, 3000));
 }

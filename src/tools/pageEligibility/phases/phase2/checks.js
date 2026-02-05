@@ -1,31 +1,16 @@
 export function runPhase2Checks(signals) {
   return [
     {
-      check: "jsRequired",
-      pass: !(
-        signals.renderUsed &&
-        signals.htmlTextLength < 300 &&
-        signals.visibleTextLength > 800
-      )
-    },
-    {
       check: "emptyHtmlShell",
       pass: signals.hasHtmlContent
     },
     {
       check: "soft404",
-      pass: !looksLikeSoft404(
-        signals.visibleText,
-        signals.visibleTextLength
-      )
-    },
-    {
-      check: "renderMismatch",
-      pass: !isLargeMismatch(signals)
+      pass: !looksLikeSoft404(signals.htmlText, signals.htmlTextLength)
     },
     {
       check: "lazyLoadedContent",
-      pass: !signals.lazyLoadDetected || signals.hasHtmlContent
+      pass: !signals.lazyLoadDetected
     },
     {
       check: "hiddenContent",
@@ -42,11 +27,6 @@ export function runPhase2Checks(signals) {
   ];
 }
 
-function isLargeMismatch(signals) {
-  if (!signals.renderUsed) return false;
-  return signals.visibleTextLength > signals.htmlTextLength * 5;
-}
-
 function looksLikeSoft404(text, length) {
   const patterns = [
     "no results found",
@@ -57,12 +37,10 @@ function looksLikeSoft404(text, length) {
   ];
 
   if (length < 300) return true;
-
   return patterns.some(p => text.toLowerCase().includes(p));
 }
 
 function isBoilerplateDominant(signals) {
-  if (signals.visibleTextLength === 0) return true;
-  const ratio = signals.htmlTextLength / signals.visibleTextLength;
-  return ratio < 0.15;
+  if (signals.htmlTextLength === 0) return true;
+  return signals.htmlTextLength / signals.htmlLength < 0.15;
 }
