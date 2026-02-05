@@ -1,40 +1,35 @@
-import { RULES } from "./rules.js";
-
 export function runPhase1Checks(data) {
   return [
     {
-      key: "httpStatus",
-      pass: data.status === 200
+      check: "httpStatus",
+      // ✅ ALLOW 2xx + 3xx (Google-style)
+      pass: data.status >= 200 && data.status < 400,
+      severity: "block"
     },
-
     {
-      key: "noindex",
-      pass: !data.noindex
+      check: "noindex",
+      pass: !data.noindex,
+      severity: "block"
     },
-
     {
-      key: "canonical",
-      pass: !data.canonical || data.canonical === data.url
+      check: "canonical",
+      pass: data.canonicalValid,
+      severity: "warn"
     },
-
     {
-      key: "html",
-      pass: Boolean(data.html && data.html.length > 0)
+      check: "html",
+      pass: Boolean(data.html),
+      severity: "block"
     },
-
     {
-      key: "mainContent",
-      pass: data.wordCount >= RULES.mainContent.minWords
+      check: "mainContent",
+      pass: data.hasMainContent,
+      severity: "block"
     },
-
     {
-      key: "h1",
-      pass:
-        data.h1 &&
-        data.h1.length > 3 &&
-        !["home", "welcome", "untitled"].includes(
-          data.h1.toLowerCase()
-        )
+      check: "h1",
+      pass: data.hasH1,
+      severity: "warn"
     }
   ];
 }
