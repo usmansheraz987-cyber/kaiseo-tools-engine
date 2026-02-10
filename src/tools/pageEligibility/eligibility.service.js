@@ -1,4 +1,4 @@
-import { fetchPage } from "../../lib/fetcher/fetchPage.js";
+import { fetchPageHtml } from "../../lib/fetcher/fetchPage.js";
 import { applyRules } from "./eligibility.rules.js";
 import { calculateVerdict } from "./eligibility.scorer.js";
 import { getCached, setCache } from "./cache.js";
@@ -6,14 +6,16 @@ import { getCached, setCache } from "./cache.js";
 export async function runEligibilityChecks({ url, html }) {
   let pageData;
 
+  // -------------------
   // HTML MODE (no cache)
+  // -------------------
   if (html) {
     if (typeof html !== "string") {
       throw new Error("Invalid HTML input");
     }
 
     if (html.length > 2 * 1024 * 1024) {
-      throw new Error("HTML too large");
+      throw new Error("HTML_TOO_LARGE");
     }
 
     pageData = {
@@ -24,7 +26,9 @@ export async function runEligibilityChecks({ url, html }) {
     };
   }
 
+  // -------------------
   // URL MODE (with cache)
+  // -------------------
   if (url) {
     const cached = getCached(url);
     if (cached) {
@@ -34,9 +38,17 @@ export async function runEligibilityChecks({ url, html }) {
       };
     }
 
-    const fetchResult = await fetchPage(url);
+    try {
+      const fetchResult = await fetchPageHtml(url);
 
-    if (!fetchResult.ok) {
+      pageData = {
+        html: fetchResult.html,
+        status: fetchResult.meta.httpStatus,
+        headers: { "content-type": "text/html" },
+        finalUrl: fetchResult.meta.finalUrl
+      };
+
+    } catch (err) {
       return {
         eligible: false,
         severity: "critical",
@@ -45,13 +57,11 @@ export async function runEligibilityChecks({ url, html }) {
           {
             type: "fetch_error",
             severity: "critical",
-            message: fetchResult.error || "Unknown fetch error"
+            message: err.message || "Unknown fetch error"
           }
         ]
       };
     }
-
-    pageData = fetchResult;
   }
 
   const issues = applyRules(pageData);
@@ -64,7 +74,7 @@ export async function runEligibilityChecks({ url, html }) {
     source: "live"
   };
 
-  // Cache only URL mode
+  // Cache only successful URL results
   if (url && result.eligible !== false) {
     setCache(url, result);
   }
