@@ -1,10 +1,11 @@
 import express from "express";
 
-import seoAnalyzerController from "../controllers/seoAnalyzer.controller.js";
-import seoAnalyzerV2Controller from "../controllers/seoAnalyzerV2.controller.js";
-import seoAnalyzerV2CompareController from "../controllers/seoAnalyzerV2Compare.controller.js";
-import seoAnalyzerV3Controller from "../controllers/seoAnalyzerV3.controller.js";
-import seoAnalyzerV4Controller from "../controllers/seoAnalyzerV4.controller.js";
+import { seoAnalyzerController } from "../tools/seoAnalyzer/v1/controller.js";
+import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
+import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/compare.controller.js";
+import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
+import { seoAnalyzerV4Controller } from "../tools/seoAnalyzer/v4/controller.js";
+
 
 import { checkPageEligibility } from "../tools/pageEligibility/index.js";
 
