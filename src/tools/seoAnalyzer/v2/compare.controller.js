@@ -1,4 +1,5 @@
-import { runSeoComparison } from "./service.js";
+import { runSeoComparison } from "./compare.service.js";
+
 
 export async function seoAnalyzerV2CompareController(req, res) {
   try {
