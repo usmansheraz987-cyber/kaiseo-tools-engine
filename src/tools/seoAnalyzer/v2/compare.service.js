@@ -1,5 +1,6 @@
 import { runSeoAnalyzerV2 } from "./service.js";
-import { compareSeoResults } from "./compareResults.js";
+import { compareSeoResults } from "./comparison/compareResults.js";
+
 
 export async function runSeoComparison({ before, after }) {
   const beforeResult = await runSeoAnalyzerV2(before);
@@ -16,3 +17,4 @@ export async function runSeoComparison({ before, after }) {
     comparison
   };
 }
+
