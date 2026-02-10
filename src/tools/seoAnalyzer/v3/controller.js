@@ -1,17 +1,9 @@
 import { runSeoAnalyzerV3 } from "./service.js";
-console.log("V3 CONTROLLER FILE LOADED");
-
 
 export async function seoAnalyzerV3Controller(req, res) {
   try {
     const { url, primaryQuery } = req.body || {};
-
-    if (!url || !primaryQuery) {
-      return res.status(400).json({
-        success: false,
-        error: "url and primaryQuery are required"
-      });
-    }
+    const eligibility = req.eligibility;
 
     const result = await runSeoAnalyzerV3({
       url,
@@ -21,6 +13,7 @@ export async function seoAnalyzerV3Controller(req, res) {
     return res.status(200).json({
       success: true,
       version: "v3",
+      eligibility,
       data: result
     });
 

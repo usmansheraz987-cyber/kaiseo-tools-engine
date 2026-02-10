@@ -1,51 +1,84 @@
 import express from "express";
 
-// v1
-import { seoAnalyzerController } from "../tools/seoAnalyzer/v1/controller.js";
+import seoAnalyzerController from "../controllers/seoAnalyzer.controller.js";
+import seoAnalyzerV2Controller from "../controllers/seoAnalyzerV2.controller.js";
+import seoAnalyzerV2CompareController from "../controllers/seoAnalyzerV2Compare.controller.js";
+import seoAnalyzerV3Controller from "../controllers/seoAnalyzerV3.controller.js";
+import seoAnalyzerV4Controller from "../controllers/seoAnalyzerV4.controller.js";
 
-// v2 analyze
-import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
-
-// v2 compare
-import { seoAnalyzerV2CompareController } from "../tools/seoAnalyzer/v2/comparison/controller.js";
-
-//v3 
-import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
+import { checkPageEligibility } from "../tools/pageEligibility/index.js";
 
 const router = express.Router();
-// v4
 
-// v4 decide
-import { seoAnalyzerV4Controller } from "../tools/seoAnalyzer/v4/controller.js";
+/* ---------------------------------------
+   Eligibility Wrapper Middleware
+---------------------------------------- */
+function withEligibility(controller) {
+  return async (req, res, next) => {
+    try {
+      const { url, html } = req.body;
 
-/* --------------------
-   Health check
--------------------- */
-router.get("/_alive", (req, res) => {
-  res.send("SEO ANALYZER ROUTE IS ALIVE");
-});
+      if (!url && !html) {
+        return res.status(400).json({
+          success: false,
+          error: "Provide either url or html"
+        });
+      }
 
-/* --------------------
-   v1
--------------------- */
-router.post("/seo-analyzer/v1/analyze", seoAnalyzerController);
+      const eligibility = await checkPageEligibility({ url, html });
 
-/* --------------------
-   v2 analyze
--------------------- */
-router.post("/seo-analyzer/v2/analyze", seoAnalyzerV2Controller);
+      // Block ONLY on critical technical failure
+      if (!eligibility.eligible && eligibility.severity === "critical") {
+        return res.json({
+          success: false,
+          stage: "eligibility",
+          eligibility
+        });
+      }
 
-/* --------------------
-   v2 compare
--------------------- */
-router.post("/seo-analyzer/v2/compare", seoAnalyzerV2CompareController);
+      // Attach eligibility to request for controllers
+      req.eligibility = eligibility;
 
-// v3 
-router.post("/seo-analyzer/v3/analyze", seoAnalyzerV3Controller);
+      return controller(req, res, next);
 
+    } catch (err) {
+      next(err);
+    }
+  };
+}
 
-// v4 decide
-router.post("/seo-analyzer/v4/decide", seoAnalyzerV4Controller);
+/* ---------------------------------------
+   SEO Analyzer Routes
+---------------------------------------- */
 
+// V1 Analyze
+router.post(
+  "/seo-analyzer/v1/analyze",
+  withEligibility(seoAnalyzerController)
+);
+
+// V2 Analyze
+router.post(
+  "/seo-analyzer/v2/analyze",
+  withEligibility(seoAnalyzerV2Controller)
+);
+
+// V2 Compare (NO eligibility here)
+router.post(
+  "/seo-analyzer/v2/compare",
+  seoAnalyzerV2CompareController
+);
+
+// V3 Analyze
+router.post(
+  "/seo-analyzer/v3/analyze",
+  withEligibility(seoAnalyzerV3Controller)
+);
+
+// V4 Decide
+router.post(
+  "/seo-analyzer/v4/decide",
+  withEligibility(seoAnalyzerV4Controller)
+);
 
 export default router;
