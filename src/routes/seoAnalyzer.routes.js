@@ -3,7 +3,8 @@ import express from "express";
 import { seoAnalyzerController } from "../tools/seoAnalyzer/v1/controller.js";
 import { seoAnalyzerV2Controller } from "../tools/seoAnalyzer/v2/controller.js";
 import { seoAnalyzerV2CompareController }
-from "../tools/seoAnalyzer/v2/controller.js";
+from "../tools/seoAnalyzer/v2/compare.controller.js";
+
 import { seoAnalyzerV3Controller } from "../tools/seoAnalyzer/v3/controller.js";
 import { seoAnalyzerV4Controller } from "../tools/seoAnalyzer/v4/controller.js";
 
