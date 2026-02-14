@@ -1,5 +1,3 @@
-// src/tools/aiDetector/v1/heuristics.js
-
 import {
   splitIntoSentences,
   normalizeText,
@@ -12,16 +10,18 @@ import {
   STRUCTURE_THRESHOLDS
 } from "./constants.js";
 
-/* =====================================================
-   STOPWORDS (Used for smarter repetition detection)
-===================================================== */
+/* ===============================
+   STOPWORDS
+================================= */
 
 const STOPWORDS = new Set([
   "the","is","in","and","to","of","a","it","that","for","on","with",
   "as","at","by","an","be","this","which","or","from","are","was"
 ]);
 
-// transition phase detection
+/* ===============================
+   TRANSITIONS
+================================= */
 
 const TRANSITION_PHRASES = [
   "in conclusion",
@@ -40,10 +40,6 @@ const TRANSITION_PHRASES = [
   "to conclude"
 ];
 
-/* =====================================================
-   TRANSITION PHRASE DETECTION
-===================================================== */
-
 export function analyzeTransitions(text) {
   const normalized = normalizeText(text);
   const wordCount = tokenize(normalized).length;
@@ -55,9 +51,7 @@ export function analyzeTransitions(text) {
   TRANSITION_PHRASES.forEach(phrase => {
     const regex = new RegExp("\\b" + phrase + "\\b", "g");
     const matches = normalized.match(regex);
-    if (matches) {
-      matchCount += matches.length;
-    }
+    if (matches) matchCount += matches.length;
   });
 
   const density = matchCount / wordCount;
@@ -67,10 +61,9 @@ export function analyzeTransitions(text) {
   return "low";
 }
 
-
-/* =====================================================
-   PERPLEXITY (Sentence Length Variance)
-===================================================== */
+/* ===============================
+   PERPLEXITY
+================================= */
 
 export function analyzePerplexity(text) {
   const sentences = splitIntoSentences(text);
@@ -86,9 +79,9 @@ export function analyzePerplexity(text) {
   return "low";
 }
 
-/* =====================================================
-   BURSTINESS (Rhythm Variation)
-===================================================== */
+/* ===============================
+   BURSTINESS
+================================= */
 
 export function analyzeBurstiness(text) {
   const sentences = splitIntoSentences(text);
@@ -96,27 +89,24 @@ export function analyzeBurstiness(text) {
 
   if (!lengths.length) return "low";
 
-  const stdDev = Math.sqrt(varianceOf(lengths, average(lengths)));
+  const stdDev = Math.sqrt(
+    varianceOf(lengths, average(lengths))
+  );
 
   if (stdDev < BURSTINESS_THRESHOLDS.low) return "high";
   if (stdDev < BURSTINESS_THRESHOLDS.medium) return "medium";
   return "low";
 }
 
-/* =====================================================
-   IMPROVED REPETITION DETECTION
-   - Stopword filtered
-   - Bigram detection
-   - Trigram detection
-===================================================== */
+/* ===============================
+   REPETITION
+================================= */
 
 export function analyzeRepetition(text) {
   const normalized = normalizeText(text);
   const tokens = tokenize(normalized);
 
   if (tokens.length < 20) return "low";
-
-  /* ---------- WORD REPETITION ---------- */
 
   const wordFreq = {};
   tokens.forEach(token => {
@@ -125,37 +115,36 @@ export function analyzeRepetition(text) {
     }
   });
 
-  const repeatedWords = Object.values(wordFreq).filter(c => c > 3).length;
+  const repeatedWords =
+    Object.values(wordFreq).filter(c => c > 3).length;
   const wordRatio = repeatedWords / tokens.length;
-
-  /* ---------- BIGRAM REPETITION ---------- */
 
   const bigramFreq = {};
   for (let i = 0; i < tokens.length - 1; i++) {
     if (!STOPWORDS.has(tokens[i])) {
       const bigram = tokens[i] + " " + tokens[i + 1];
-      bigramFreq[bigram] = (bigramFreq[bigram] || 0) + 1;
+      bigramFreq[bigram] =
+        (bigramFreq[bigram] || 0) + 1;
     }
   }
 
-  const repeatedBigrams = Object.values(bigramFreq).filter(c => c > 2).length;
+  const repeatedBigrams =
+    Object.values(bigramFreq).filter(c => c > 2).length;
   const bigramRatio = repeatedBigrams / tokens.length;
-
-  /* ---------- TRIGRAM REPETITION ---------- */
 
   const trigramFreq = {};
   for (let i = 0; i < tokens.length - 2; i++) {
     if (!STOPWORDS.has(tokens[i])) {
       const trigram =
         tokens[i] + " " + tokens[i + 1] + " " + tokens[i + 2];
-      trigramFreq[trigram] = (trigramFreq[trigram] || 0) + 1;
+      trigramFreq[trigram] =
+        (trigramFreq[trigram] || 0) + 1;
     }
   }
 
-  const repeatedTrigrams = Object.values(trigramFreq).filter(c => c > 1).length;
+  const repeatedTrigrams =
+    Object.values(trigramFreq).filter(c => c > 1).length;
   const trigramRatio = repeatedTrigrams / tokens.length;
-
-  /* ---------- COMBINED SCORE ---------- */
 
   const combinedScore =
     wordRatio * 0.4 +
@@ -167,9 +156,9 @@ export function analyzeRepetition(text) {
   return "low";
 }
 
-/* =====================================================
-   STRUCTURAL PREDICTABILITY
-===================================================== */
+/* ===============================
+   STRUCTURE
+================================= */
 
 export function analyzeStructure(text) {
   const sentences = splitIntoSentences(text);
@@ -185,17 +174,21 @@ export function analyzeStructure(text) {
     starterFreq[w] = (starterFreq[w] || 0) + 1;
   });
 
-  const repeatedStarters = Object.values(starterFreq).filter(v => v > 2).length;
+  const repeatedStarters =
+    Object.values(starterFreq).filter(v => v > 2).length;
+
   const ratio = repeatedStarters / starters.length;
 
-  if (ratio > STRUCTURE_THRESHOLDS.patterned) return "patterned";
-  if (ratio > STRUCTURE_THRESHOLDS.semi) return "semi-patterned";
+  if (ratio > STRUCTURE_THRESHOLDS.patterned)
+    return "patterned";
+  if (ratio > STRUCTURE_THRESHOLDS.semi)
+    return "semi-patterned";
   return "natural";
 }
 
-/* =====================================================
+/* ===============================
    HELPERS
-===================================================== */
+================================= */
 
 function average(arr) {
   return arr.reduce((a, b) => a + b, 0) / arr.length;

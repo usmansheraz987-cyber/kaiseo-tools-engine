@@ -6,7 +6,6 @@ import {
   analyzeTransitions
 } from "./heuristics.js";
 
-
 import {
   AI_CLASSIFICATION_THRESHOLDS,
   RISK_LEVEL_THRESHOLDS
@@ -17,7 +16,6 @@ import {
   splitIntoSentences
 } from "./utils.js";
 
-
 /* ===============================
    MAIN ENTRY
 ================================= */
@@ -25,30 +23,48 @@ import {
 export async function analyzeContent(text) {
   const wordCount = countWords(text);
   const sentences = splitIntoSentences(text);
-
-  const sentenceAnalysis = sentences.map((sentence, index) => {
-    return analyzeSentence(sentence, index);
-  });
   const paragraphs = splitIntoParagraphs(text);
 
-const paragraphAnalysis = paragraphs.map((para, index) => {
-  return analyzeParagraph(para, index);
-});
+  const sentenceAnalysis = sentences.map((sentence, index) =>
+    analyzeSentence(sentence, index)
+  );
 
+  const paragraphAnalysis = paragraphs.map((para, index) =>
+    analyzeParagraph(para, index)
+  );
 
-  const aiProbability = aggregateGlobalScore(sentenceAnalysis);
+  /* ---------- GLOBAL SCORING (Weighted) ---------- */
+
+  const sentenceScore = aggregateGlobalScore(sentenceAnalysis);
+
+  const paragraphScore =
+    paragraphAnalysis.length > 0
+      ? Math.round(
+          paragraphAnalysis.reduce((sum, p) => sum + p.ai_probability, 0) /
+          paragraphAnalysis.length
+        )
+      : 0;
+
+  const aiProbability = Math.round(
+    sentenceScore * 0.7 + paragraphScore * 0.3
+  );
+
   const classification = classify(aiProbability);
   const riskLevel = determineRisk(aiProbability);
-  const confidence = determineConfidence(sentenceAnalysis, wordCount);
+  const confidence = determineConfidence(
+    sentenceAnalysis,
+    paragraphAnalysis,
+    wordCount
+  );
 
-return {
-  ai_probability: aiProbability,
-  classification,
-  confidence,
-  risk_level: riskLevel,
-  sentence_analysis: sentenceAnalysis,
-  paragraph_analysis: paragraphAnalysis
-};
+  return {
+    ai_probability: aiProbability,
+    classification,
+    confidence,
+    risk_level: riskLevel,
+    sentence_analysis: sentenceAnalysis,
+    paragraph_analysis: paragraphAnalysis
+  };
 }
 
 /* ===============================
@@ -76,11 +92,11 @@ function analyzeParagraph(paragraph, index) {
 
   const sentenceScores = sentences.map(s =>
     calculateSentenceScore({
-      perplexity: analyzePerplexity(s),
-      burstiness: analyzeBurstiness(s),
-      repetition: analyzeRepetition(s),
-      structure: analyzeStructure(s),
-      transitions: analyzeTransitions(s)
+      perplexity: analyzePerplexity(paragraph), // meaningful at paragraph level
+      burstiness: analyzeBurstiness(paragraph),
+      repetition: analyzeRepetition(paragraph),
+      structure: analyzeStructure(paragraph),
+      transitions: analyzeTransitions(paragraph)
     })
   );
 
@@ -117,16 +133,15 @@ function detectDominantParagraphSignal(paragraph) {
 ================================= */
 
 function analyzeSentence(sentence, index) {
- const signals = {
-  perplexity: analyzePerplexity(sentence),
-  burstiness: analyzeBurstiness(sentence),
-  repetition: analyzeRepetition(sentence),
-  structure: analyzeStructure(sentence),
-  transitions: analyzeTransitions(sentence)
-};
+  const signals = {
+    perplexity: "low", // disabled at sentence level
+    burstiness: analyzeBurstiness(sentence),
+    repetition: analyzeRepetition(sentence),
+    structure: analyzeStructure(sentence),
+    transitions: analyzeTransitions(sentence)
+  };
 
   const score = calculateSentenceScore(signals);
-
   const flags = buildSentenceFlags(signals);
 
   return {
@@ -153,19 +168,14 @@ function calculateSentenceScore(signals) {
   if (signals.structure === "patterned") score += 20;
   else if (signals.structure === "semi-patterned") score += 10;
 
-  // ✅ ADD THIS BLOCK HERE
   if (signals.transitions === "high") score += 20;
   else if (signals.transitions === "medium") score += 10;
 
   return Math.min(score, 100);
 }
 
-
 function buildSentenceFlags(signals) {
   const flags = [];
-
-  if (signals.perplexity !== "low")
-    flags.push("Uniform sentence length pattern");
 
   if (signals.burstiness !== "low")
     flags.push("Low rhythm variation");
@@ -176,16 +186,14 @@ function buildSentenceFlags(signals) {
   if (signals.structure !== "natural")
     flags.push("Predictable sentence opening");
 
-  // ✅ ADD THIS BLOCK HERE
   if (signals.transitions !== "low")
     flags.push("Overused AI-style transition phrases");
 
   return flags;
 }
 
-
 /* ===============================
-   GLOBAL AGGREGATION
+   GLOBAL HELPERS
 ================================= */
 
 function aggregateGlobalScore(sentenceResults) {
@@ -198,10 +206,6 @@ function aggregateGlobalScore(sentenceResults) {
 
   return Math.round(total / sentenceResults.length);
 }
-
-/* ===============================
-   CLASSIFICATION
-================================= */
 
 function classify(score) {
   if (score < AI_CLASSIFICATION_THRESHOLDS.likelyHuman)
@@ -217,15 +221,26 @@ function determineRisk(score) {
   return "high";
 }
 
-function determineConfidence(sentenceResults, wordCount) {
+function determineConfidence(
+  sentenceResults,
+  paragraphResults,
+  wordCount
+) {
   if (wordCount < 120) return "low";
 
-  const highRiskSentences = sentenceResults.filter(
+  const highSentences = sentenceResults.filter(
     s => s.ai_probability > 70
   ).length;
 
-  if (highRiskSentences >= 3) return "high";
-  if (highRiskSentences >= 1) return "medium";
+  const highParagraphs = paragraphResults.filter(
+    p => p.ai_probability > 70
+  ).length;
+
+  if (highSentences >= 3 || highParagraphs >= 1)
+    return "high";
+
+  if (highSentences >= 1)
+    return "medium";
 
   return "low";
 }
