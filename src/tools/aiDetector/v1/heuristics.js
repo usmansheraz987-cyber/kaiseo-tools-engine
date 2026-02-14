@@ -9,18 +9,74 @@ import {
 import {
   PERPLEXITY_THRESHOLDS,
   BURSTINESS_THRESHOLDS,
-  REPETITION_THRESHOLDS,
   STRUCTURE_THRESHOLDS
 } from "./constants.js";
 
-/**
- * Perplexity proxy
- * Measures uniformity of language patterns
- * AI text tends to be too consistent
- */
+/* =====================================================
+   STOPWORDS (Used for smarter repetition detection)
+===================================================== */
+
+const STOPWORDS = new Set([
+  "the","is","in","and","to","of","a","it","that","for","on","with",
+  "as","at","by","an","be","this","which","or","from","are","was"
+]);
+
+// transition phase detection
+
+const TRANSITION_PHRASES = [
+  "in conclusion",
+  "in addition",
+  "furthermore",
+  "moreover",
+  "overall",
+  "as a result",
+  "for example",
+  "for instance",
+  "it is important to",
+  "this highlights",
+  "this demonstrates",
+  "on the other hand",
+  "in summary",
+  "to conclude"
+];
+
+/* =====================================================
+   TRANSITION PHRASE DETECTION
+===================================================== */
+
+export function analyzeTransitions(text) {
+  const normalized = normalizeText(text);
+  const wordCount = tokenize(normalized).length;
+
+  if (wordCount < 40) return "low";
+
+  let matchCount = 0;
+
+  TRANSITION_PHRASES.forEach(phrase => {
+    const regex = new RegExp("\\b" + phrase + "\\b", "g");
+    const matches = normalized.match(regex);
+    if (matches) {
+      matchCount += matches.length;
+    }
+  });
+
+  const density = matchCount / wordCount;
+
+  if (density > 0.02) return "high";
+  if (density > 0.01) return "medium";
+  return "low";
+}
+
+
+/* =====================================================
+   PERPLEXITY (Sentence Length Variance)
+===================================================== */
+
 export function analyzePerplexity(text) {
   const sentences = splitIntoSentences(text);
   const lengths = sentences.map(s => tokenize(s).length);
+
+  if (!lengths.length) return "low";
 
   const avg = average(lengths);
   const variance = varianceOf(lengths, avg);
@@ -30,14 +86,15 @@ export function analyzePerplexity(text) {
   return "low";
 }
 
-/**
- * Burstiness
- * Human writing fluctuates in sentence length
- * AI writing clusters tightly
- */
+/* =====================================================
+   BURSTINESS (Rhythm Variation)
+===================================================== */
+
 export function analyzeBurstiness(text) {
   const sentences = splitIntoSentences(text);
   const lengths = sentences.map(s => tokenize(s).length);
+
+  if (!lengths.length) return "low";
 
   const stdDev = Math.sqrt(varianceOf(lengths, average(lengths)));
 
@@ -46,39 +103,85 @@ export function analyzeBurstiness(text) {
   return "low";
 }
 
-/**
- * Repetition detection
- * AI repeats phrases, transitions, structures
- */
+/* =====================================================
+   IMPROVED REPETITION DETECTION
+   - Stopword filtered
+   - Bigram detection
+   - Trigram detection
+===================================================== */
+
 export function analyzeRepetition(text) {
   const normalized = normalizeText(text);
   const tokens = tokenize(normalized);
 
-  const freqMap = {};
-  tokens.forEach(t => {
-    freqMap[t] = (freqMap[t] || 0) + 1;
+  if (tokens.length < 20) return "low";
+
+  /* ---------- WORD REPETITION ---------- */
+
+  const wordFreq = {};
+  tokens.forEach(token => {
+    if (!STOPWORDS.has(token)) {
+      wordFreq[token] = (wordFreq[token] || 0) + 1;
+    }
   });
 
-  const repeatedTokens = Object.values(freqMap).filter(c => c > 3).length;
-  const ratio = repeatedTokens / tokens.length;
+  const repeatedWords = Object.values(wordFreq).filter(c => c > 3).length;
+  const wordRatio = repeatedWords / tokens.length;
 
-  if (ratio > REPETITION_THRESHOLDS.high) return "high";
-  if (ratio > REPETITION_THRESHOLDS.medium) return "medium";
+  /* ---------- BIGRAM REPETITION ---------- */
+
+  const bigramFreq = {};
+  for (let i = 0; i < tokens.length - 1; i++) {
+    if (!STOPWORDS.has(tokens[i])) {
+      const bigram = tokens[i] + " " + tokens[i + 1];
+      bigramFreq[bigram] = (bigramFreq[bigram] || 0) + 1;
+    }
+  }
+
+  const repeatedBigrams = Object.values(bigramFreq).filter(c => c > 2).length;
+  const bigramRatio = repeatedBigrams / tokens.length;
+
+  /* ---------- TRIGRAM REPETITION ---------- */
+
+  const trigramFreq = {};
+  for (let i = 0; i < tokens.length - 2; i++) {
+    if (!STOPWORDS.has(tokens[i])) {
+      const trigram =
+        tokens[i] + " " + tokens[i + 1] + " " + tokens[i + 2];
+      trigramFreq[trigram] = (trigramFreq[trigram] || 0) + 1;
+    }
+  }
+
+  const repeatedTrigrams = Object.values(trigramFreq).filter(c => c > 1).length;
+  const trigramRatio = repeatedTrigrams / tokens.length;
+
+  /* ---------- COMBINED SCORE ---------- */
+
+  const combinedScore =
+    wordRatio * 0.4 +
+    bigramRatio * 0.35 +
+    trigramRatio * 0.25;
+
+  if (combinedScore > 0.03) return "high";
+  if (combinedScore > 0.015) return "medium";
   return "low";
 }
 
-/**
- * Structural predictability
- * AI uses predictable transitions and paragraph rhythm
- */
+/* =====================================================
+   STRUCTURAL PREDICTABILITY
+===================================================== */
+
 export function analyzeStructure(text) {
   const sentences = splitIntoSentences(text);
+  if (!sentences.length) return "natural";
+
   const starters = sentences.map(s =>
     s.trim().split(" ")[0]?.toLowerCase()
   );
 
   const starterFreq = {};
   starters.forEach(w => {
+    if (!w) return;
     starterFreq[w] = (starterFreq[w] || 0) + 1;
   });
 
@@ -90,7 +193,9 @@ export function analyzeStructure(text) {
   return "natural";
 }
 
-/* ---------- helpers ---------- */
+/* =====================================================
+   HELPERS
+===================================================== */
 
 function average(arr) {
   return arr.reduce((a, b) => a + b, 0) / arr.length;

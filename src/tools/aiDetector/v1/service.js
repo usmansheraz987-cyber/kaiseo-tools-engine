@@ -2,45 +2,143 @@ import {
   analyzePerplexity,
   analyzeBurstiness,
   analyzeRepetition,
-  analyzeStructure
+  analyzeStructure,
+  analyzeTransitions
 } from "./heuristics.js";
+
 
 import {
   AI_CLASSIFICATION_THRESHOLDS,
   RISK_LEVEL_THRESHOLDS
 } from "./constants.js";
 
-import { countWords } from "./utils.js";
+import {
+  countWords,
+  splitIntoSentences
+} from "./utils.js";
+
+
+/* ===============================
+   MAIN ENTRY
+================================= */
 
 export async function analyzeContent(text) {
   const wordCount = countWords(text);
+  const sentences = splitIntoSentences(text);
 
-  const signals = {
-    perplexity: analyzePerplexity(text),
-    burstiness: analyzeBurstiness(text),
-    repetition: analyzeRepetition(text),
-    structure: analyzeStructure(text)
-  };
+  const sentenceAnalysis = sentences.map((sentence, index) => {
+    return analyzeSentence(sentence, index);
+  });
+  const paragraphs = splitIntoParagraphs(text);
 
-  const aiProbability = calculateAIProbability(signals);
+const paragraphAnalysis = paragraphs.map((para, index) => {
+  return analyzeParagraph(para, index);
+});
+
+
+  const aiProbability = aggregateGlobalScore(sentenceAnalysis);
   const classification = classify(aiProbability);
   const riskLevel = determineRisk(aiProbability);
-  const confidence = determineConfidence(signals, wordCount);
-  const explanation = buildExplanation(signals, wordCount);
+  const confidence = determineConfidence(sentenceAnalysis, wordCount);
+
+return {
+  ai_probability: aiProbability,
+  classification,
+  confidence,
+  risk_level: riskLevel,
+  sentence_analysis: sentenceAnalysis,
+  paragraph_analysis: paragraphAnalysis
+};
+}
+
+/* ===============================
+   PARAGRAPH ENGINE
+================================= */
+
+function splitIntoParagraphs(text) {
+  return text
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
+}
+
+function analyzeParagraph(paragraph, index) {
+  const sentences = splitIntoSentences(paragraph);
+
+  if (!sentences.length) {
+    return {
+      index,
+      text: paragraph,
+      ai_probability: 0,
+      dominant_signal: null
+    };
+  }
+
+  const sentenceScores = sentences.map(s =>
+    calculateSentenceScore({
+      perplexity: analyzePerplexity(s),
+      burstiness: analyzeBurstiness(s),
+      repetition: analyzeRepetition(s),
+      structure: analyzeStructure(s),
+      transitions: analyzeTransitions(s)
+    })
+  );
+
+  const avgScore =
+    sentenceScores.reduce((a, b) => a + b, 0) /
+    sentenceScores.length;
+
+  const dominantSignal = detectDominantParagraphSignal(paragraph);
 
   return {
-    ai_probability: aiProbability,
-    classification,
-    confidence,
-    risk_level: riskLevel,
-    signals,
-    explanation
+    index,
+    text: paragraph,
+    ai_probability: Math.round(avgScore),
+    dominant_signal: dominantSignal
   };
 }
 
-/* ---------- CORE LOGIC ---------- */
+function detectDominantParagraphSignal(paragraph) {
+  const signals = {
+    repetition: analyzeRepetition(paragraph),
+    transitions: analyzeTransitions(paragraph),
+    structure: analyzeStructure(paragraph)
+  };
 
-function calculateAIProbability(signals) {
+  if (signals.transitions === "high") return "transitions";
+  if (signals.repetition === "high") return "repetition";
+  if (signals.structure === "patterned") return "structure";
+
+  return null;
+}
+
+/* ===============================
+   SENTENCE ENGINE
+================================= */
+
+function analyzeSentence(sentence, index) {
+ const signals = {
+  perplexity: analyzePerplexity(sentence),
+  burstiness: analyzeBurstiness(sentence),
+  repetition: analyzeRepetition(sentence),
+  structure: analyzeStructure(sentence),
+  transitions: analyzeTransitions(sentence)
+};
+
+  const score = calculateSentenceScore(signals);
+
+  const flags = buildSentenceFlags(signals);
+
+  return {
+    index,
+    text: sentence,
+    ai_probability: score,
+    signals,
+    flags
+  };
+}
+
+function calculateSentenceScore(signals) {
   let score = 0;
 
   if (signals.perplexity === "high") score += 30;
@@ -55,12 +153,61 @@ function calculateAIProbability(signals) {
   if (signals.structure === "patterned") score += 20;
   else if (signals.structure === "semi-patterned") score += 10;
 
+  // ✅ ADD THIS BLOCK HERE
+  if (signals.transitions === "high") score += 20;
+  else if (signals.transitions === "medium") score += 10;
+
   return Math.min(score, 100);
 }
 
+
+function buildSentenceFlags(signals) {
+  const flags = [];
+
+  if (signals.perplexity !== "low")
+    flags.push("Uniform sentence length pattern");
+
+  if (signals.burstiness !== "low")
+    flags.push("Low rhythm variation");
+
+  if (signals.repetition !== "low")
+    flags.push("Repetitive word usage");
+
+  if (signals.structure !== "natural")
+    flags.push("Predictable sentence opening");
+
+  // ✅ ADD THIS BLOCK HERE
+  if (signals.transitions !== "low")
+    flags.push("Overused AI-style transition phrases");
+
+  return flags;
+}
+
+
+/* ===============================
+   GLOBAL AGGREGATION
+================================= */
+
+function aggregateGlobalScore(sentenceResults) {
+  if (!sentenceResults.length) return 0;
+
+  const total = sentenceResults.reduce(
+    (sum, s) => sum + s.ai_probability,
+    0
+  );
+
+  return Math.round(total / sentenceResults.length);
+}
+
+/* ===============================
+   CLASSIFICATION
+================================= */
+
 function classify(score) {
-  if (score < AI_CLASSIFICATION_THRESHOLDS.likelyHuman) return "Likely Human";
-  if (score < AI_CLASSIFICATION_THRESHOLDS.mixed) return "Mixed";
+  if (score < AI_CLASSIFICATION_THRESHOLDS.likelyHuman)
+    return "Likely Human";
+  if (score < AI_CLASSIFICATION_THRESHOLDS.mixed)
+    return "Mixed";
   return "Likely AI";
 }
 
@@ -70,68 +217,15 @@ function determineRisk(score) {
   return "high";
 }
 
-/* ---------- CONFIDENCE (LENGTH-AWARE) ---------- */
-
-function determineConfidence(signals, wordCount) {
-  let baseConfidence = "low";
-
-  const strongSignals = Object.values(signals).filter(
-    v => v === "high" || v === "patterned"
-  ).length;
-
-  if (strongSignals >= 3) baseConfidence = "high";
-  else if (strongSignals === 2) baseConfidence = "medium";
-
-  // HARD CAPS BY LENGTH
+function determineConfidence(sentenceResults, wordCount) {
   if (wordCount < 120) return "low";
 
-  if (wordCount < 400 && baseConfidence === "high") {
-    return "medium";
-  }
+  const highRiskSentences = sentenceResults.filter(
+    s => s.ai_probability > 70
+  ).length;
 
-  return baseConfidence;
-}
+  if (highRiskSentences >= 3) return "high";
+  if (highRiskSentences >= 1) return "medium";
 
-/* ---------- EXPLANATION ---------- */
-
-function buildExplanation(signals, wordCount) {
-  const explanations = [];
-
-  if (signals.perplexity !== "low") {
-    explanations.push(
-      "Sentence length and phrasing show unusually consistent patterns."
-    );
-  }
-
-  if (signals.burstiness !== "low") {
-    explanations.push(
-      "Sentence rhythm lacks the natural variation typical of human writing."
-    );
-  }
-
-  if (signals.repetition !== "low") {
-    explanations.push(
-      "Repeated word usage appears higher than expected in human text."
-    );
-  }
-
-  if (signals.structure !== "natural") {
-    explanations.push(
-      "Sentence openings follow predictable structural patterns."
-    );
-  }
-
-  if (wordCount < 400) {
-    explanations.push(
-      "Short text samples reduce detection reliability. Longer content improves accuracy."
-    );
-  }
-
-  if (!explanations.length) {
-    explanations.push(
-      "No strong AI writing patterns were detected in this text."
-    );
-  }
-
-  return explanations;
+  return "low";
 }
