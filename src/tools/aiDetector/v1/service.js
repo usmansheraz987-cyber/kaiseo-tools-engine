@@ -91,19 +91,16 @@ function analyzeParagraph(paragraph, index) {
     };
   }
 
-  const sentenceScores = sentences.map(s =>
-    calculateSentenceScore({
-      perplexity: analyzePerplexity(paragraph), // meaningful at paragraph level
-      burstiness: analyzeBurstiness(paragraph),
-      repetition: analyzeRepetition(paragraph),
-      structure: analyzeStructure(paragraph),
-      transitions: analyzeTransitions(paragraph)
-    })
-  );
+const paragraphSignals = {
+  perplexity: analyzePerplexity(paragraph),
+  burstiness: analyzeBurstiness(paragraph),
+  repetition: analyzeRepetition(paragraph),
+  structure: analyzeStructure(paragraph),
+  transitions: analyzeTransitions(paragraph)
+};
 
-  const avgScore =
-    sentenceScores.reduce((a, b) => a + b, 0) /
-    sentenceScores.length;
+const avgScore = calculateSentenceScore(paragraphSignals);
+
 
   const dominantSignal = detectDominantParagraphSignal(paragraph);
 
@@ -135,12 +132,13 @@ function detectDominantParagraphSignal(paragraph) {
 
 function analyzeSentence(sentence, index) {
   const signals = {
-    perplexity: "low", // disabled at sentence level
-    burstiness: analyzeBurstiness(sentence),
-    repetition: analyzeRepetition(sentence),
-    structure: analyzeStructure(sentence),
-    transitions: analyzeTransitions(sentence)
-  };
+  perplexity: "low",        // global only
+  burstiness: "low",        // disable at sentence level
+  repetition: analyzeRepetition(sentence),
+  structure: analyzeStructure(sentence),
+  transitions: analyzeTransitions(sentence)
+};
+
 
   const score = calculateSentenceScore(signals);
   const flags = buildSentenceFlags(signals);
