@@ -41,26 +41,27 @@ const TRANSITION_PHRASES = [
 ];
 
 export function analyzeTransitions(text) {
-  const normalized = normalizeText(text);
-  const wordCount = tokenize(normalized).length;
+  const lowerText = text.toLowerCase();
+  const wordCount = tokenize(lowerText).length;
 
-  if (wordCount < 40) return "low";
+  if (wordCount < 20) return "low";
 
   let matchCount = 0;
 
   TRANSITION_PHRASES.forEach(phrase => {
-    const regex = new RegExp("\\b" + phrase + "\\b", "g");
-    const matches = normalized.match(regex);
-    if (matches) matchCount += matches.length;
+    if (lowerText.includes(phrase)) {
+      const occurrences = lowerText.split(phrase).length - 1;
+      matchCount += occurrences;
+    }
   });
 
   const density = matchCount / wordCount;
 
-if (density > 0.015) return "high";
-if (density > 0.007) return "medium";
-
+  if (density > 0.01) return "high";
+  if (density > 0.005) return "medium";
   return "low";
 }
+
 
 /* ===============================
    PERPLEXITY
