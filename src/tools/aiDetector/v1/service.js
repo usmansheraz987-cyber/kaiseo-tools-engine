@@ -99,7 +99,25 @@ const paragraphSignals = {
   transitions: analyzeTransitions(paragraph)
 };
 
-const avgScore = calculateSentenceScore(paragraphSignals);
+let score = 0;
+
+if (paragraphSignals.perplexity === "high") score += 20;
+else if (paragraphSignals.perplexity === "medium") score += 10;
+
+if (paragraphSignals.burstiness === "high") score += 20;
+else if (paragraphSignals.burstiness === "medium") score += 10;
+
+if (paragraphSignals.repetition === "high") score += 20;
+else if (paragraphSignals.repetition === "medium") score += 10;
+
+if (paragraphSignals.structure === "patterned") score += 15;
+else if (paragraphSignals.structure === "semi-patterned") score += 8;
+
+if (paragraphSignals.transitions === "high") score += 20;
+else if (paragraphSignals.transitions === "medium") score += 10;
+
+const avgScore = Math.min(score, 100);
+
 
 
   const dominantSignal = detectDominantParagraphSignal(paragraph);
