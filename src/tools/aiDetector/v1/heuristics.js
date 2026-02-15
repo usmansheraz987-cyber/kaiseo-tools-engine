@@ -56,8 +56,9 @@ export function analyzeTransitions(text) {
 
   const density = matchCount / wordCount;
 
-  if (density > 0.02) return "high";
-  if (density > 0.01) return "medium";
+if (density > 0.015) return "high";
+if (density > 0.007) return "medium";
+
   return "low";
 }
 

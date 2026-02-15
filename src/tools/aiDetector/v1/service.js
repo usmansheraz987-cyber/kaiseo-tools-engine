@@ -46,8 +46,9 @@ export async function analyzeContent(text) {
       : 0;
 
   const aiProbability = Math.round(
-    sentenceScore * 0.7 + paragraphScore * 0.3
-  );
+  sentenceScore * 0.6 + paragraphScore * 0.4
+);
+
 
   const classification = classify(aiProbability);
   const riskLevel = determineRisk(aiProbability);
@@ -168,8 +169,9 @@ function calculateSentenceScore(signals) {
   if (signals.structure === "patterned") score += 20;
   else if (signals.structure === "semi-patterned") score += 10;
 
-  if (signals.transitions === "high") score += 20;
-  else if (signals.transitions === "medium") score += 10;
+if (signals.transitions === "high") score += 25;
+else if (signals.transitions === "medium") score += 15;
+
 
   return Math.min(score, 100);
 }
