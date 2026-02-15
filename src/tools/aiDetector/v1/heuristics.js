@@ -42,23 +42,22 @@ const TRANSITION_PHRASES = [
 
 export function analyzeTransitions(text) {
   const lowerText = text.toLowerCase();
-  const wordCount = tokenize(lowerText).length;
+  const cleanedText = lowerText.replace(/[^\w\s]/g, " "); 
+  const wordCount = tokenize(cleanedText).length;
 
-  if (wordCount < 20) return "low";
+  if (wordCount < 15) return "low";
 
   let matchCount = 0;
 
   TRANSITION_PHRASES.forEach(phrase => {
-    if (lowerText.includes(phrase)) {
-      const occurrences = lowerText.split(phrase).length - 1;
-      matchCount += occurrences;
-    }
+    const occurrences = cleanedText.split(phrase).length - 1;
+    matchCount += occurrences;
   });
 
   const density = matchCount / wordCount;
 
-  if (density > 0.01) return "high";
-  if (density > 0.005) return "medium";
+  if (density > 0.008) return "high";
+  if (density > 0.004) return "medium";
   return "low";
 }
 
