@@ -3,7 +3,7 @@
  * Measures sentence-level variance and burstiness.
  */
 
-import { splitIntoSentences } from "../../v1/utils.js";
+import { splitIntoSentences } from "../v1/utils.js";
 
 export function analyzeRhythm(text) {
   const sentences = splitIntoSentences(text);

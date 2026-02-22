@@ -1,8 +1,7 @@
 /**
  * REPETITION SIGNALS (V2)
  */
-
-import { tokenize } from "../../v1/utils.js";
+import { tokenize } from "../v1/utils.js";
 
 export function analyzeRepetition(text) {
   const words = tokenize(text).map(w => w.toLowerCase());

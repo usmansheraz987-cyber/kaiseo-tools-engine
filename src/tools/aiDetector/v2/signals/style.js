@@ -1,6 +1,6 @@
 // src/tools/aiDetector/v2/signals/style.js
 
-import { tokenize, splitIntoSentences, countWords } from "../../v1/utils.js";
+import { tokenize, splitIntoSentences, countWords } from "../v1/utils.js";
 
 /**
  * STYLE SIGNAL ANALYZER (V2)

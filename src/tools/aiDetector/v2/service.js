@@ -7,7 +7,7 @@ import {
   splitIntoSentences,
   tokenize,
   countWords
-} from "../../v1/utils.js";
+} from "../v1/utils.js";
 
 import { analyzeStyle } from "./signals/style.js";
 import { analyzeStructure } from "./signals/structure.js";
