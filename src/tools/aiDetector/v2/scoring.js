@@ -106,7 +106,10 @@ function computeRhythmScore(rhythm) {
 
 function applyNonLinearScaling(score) {
   const normalized = score / 100;
-  const curved = normalized * normalized;
+
+  // Logistic-style smooth curve
+  const curved = 1 / (1 + Math.exp(-8 * (normalized - 0.5)));
+
   return round(clamp(curved * 100, 0, 100));
 }
 
@@ -116,9 +119,11 @@ function computeConfidence(layerScores) {
   const max = Math.max(...layerScores);
   const min = Math.min(...layerScores);
   const variance = max - min;
+  const avg =
+    layerScores.reduce((a, b) => a + b, 0) / layerScores.length;
 
-  if (variance < 15) return "high";
-  if (variance < 35) return "medium";
+  if (avg > 60 && variance < 20) return "high";
+  if (avg > 30) return "medium";
   return "low";
 }
 
