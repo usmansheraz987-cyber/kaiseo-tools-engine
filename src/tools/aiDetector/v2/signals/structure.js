@@ -3,7 +3,7 @@
  * Document-level structural intelligence.
  */
 
-import { splitIntoSentences } from "../v1/utils.js";
+import { splitIntoSentences } from "../../v1/utils.js";
 
 export function analyzeStructure(text) {
   const paragraphs = splitParagraphs(text);
