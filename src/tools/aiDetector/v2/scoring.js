@@ -19,17 +19,21 @@ export function computeFinalScore({
   const rhythmScore = computeRhythmScore(rhythmSignals);
 
   const rawScore =
-    (sentenceScore * 0.30) +
-    (paragraphScore * 0.15) +
+    (sentenceScore * 0.15) +
+    (paragraphScore * 0.20) +
     (styleScore * 0.20) +
-    (structureScore * 0.15) +
+    (structureScore * 0.25) +
     (repetitionScore * 0.10) +
     (rhythmScore * 0.10);
 
   const scaledScore = applyNonLinearScaling(rawScore);
 
+  // ✅ Humanization Score (derived from final scaled score)
+  const humanizationScore = 100 - scaledScore;
+
   return {
     ai_probability: scaledScore,
+    humanization_score: humanizationScore,
     classification: classifyScore(scaledScore),
     risk_level: determineRiskLevel(scaledScore),
     confidence: computeConfidence([
@@ -106,10 +110,7 @@ function computeRhythmScore(rhythm) {
 
 function applyNonLinearScaling(score) {
   const normalized = score / 100;
-
-  // Logistic-style smooth curve
   const curved = 1 / (1 + Math.exp(-8 * (normalized - 0.5)));
-
   return round(clamp(curved * 100, 0, 100));
 }
 

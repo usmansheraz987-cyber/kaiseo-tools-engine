@@ -6,7 +6,7 @@ import { analyzeContentV2 } from "./service.js";
 
 export async function aiDetectorV2Controller(req, res) {
   try {
-    const { text } = req.body;
+    const { text, previous_ai_probability } = req.body;
 
     if (!text || typeof text !== "string") {
       return res.status(400).json({
@@ -14,7 +14,10 @@ export async function aiDetectorV2Controller(req, res) {
       });
     }
 
-    const result = await analyzeContentV2(text);
+    const result = await analyzeContentV2(
+      text,
+      previous_ai_probability
+    );
 
     return res.status(200).json(result);
   } catch (error) {
