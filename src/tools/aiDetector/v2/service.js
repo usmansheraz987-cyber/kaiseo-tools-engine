@@ -80,8 +80,9 @@ export async function analyzeContentV2(
   let delta = null;
 
   if (typeof previousAiProbability === "number") {
-    const aiChange =
-      scoringResult.ai_probability - previousAiProbability;
+    const aiChange = Math.round(
+  (scoringResult.ai_probability - previousAiProbability) * 100
+) / 100;
 
     const humanizationChange =
       (100 - scoringResult.ai_probability) -
