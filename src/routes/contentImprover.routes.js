@@ -14,3 +14,11 @@ router.post(
 );
 
 export default router;
+
+import { contentImproverV2Controller } 
+  from "../tools/contentImprover/v2/controller.js";
+
+router.post(
+  "/content-improver/v2",
+  contentImproverV2Controller
+);

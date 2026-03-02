@@ -11,3 +11,12 @@ export const SEVERITY = {
   MEDIUM: "medium",
   HIGH: "high"
 };
+
+export const SCORE_WEIGHTS = {
+  LONG_SENTENCE: 2,
+  VERY_LONG_SENTENCE: 4,
+  DENSE_PARAGRAPH: 5,
+  SHORT_PARAGRAPH: 2,
+  REPETITION: 6,
+  KEYWORD_OVERUSE: 8
+};
