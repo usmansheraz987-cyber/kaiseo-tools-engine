@@ -1,4 +1,4 @@
-import { detectIntent } from "./intent/detectIntent.js";
+import { detectSerpIntent } from "./intent/detectIntent.js";
 import { sectionRules } from "./sections/rules.js";
 import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
@@ -20,35 +20,56 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       v3Result?.data?.serp?.source || "fallback";
 
     // -----------------------------
-    // 1. INTENT DETECTION (SAFE)
+    // 1. SERP INTENT (REAL LOGIC)
     // -----------------------------
-    let intent = detectIntent({
-      serpTitles,
-      headings
-    });
+    const serpIntentResult = detectSerpIntent(serpTitles);
 
-    // 🚨 NEVER allow undefined intent
-    if (!intent.serp) {
+    let intent = {
+      serp: serpIntentResult.intent,
+      confidence: serpIntentResult.confidence,
+      breakdown: serpIntentResult.breakdown
+    };
+
+    // -----------------------------
+    // 2. PAGE INTENT (HEADING BASED)
+    // -----------------------------
+    const headingText = headings.join(" ").toLowerCase();
+
+    let pageIntent = "informational";
+
+    if (headingText.includes("buy") || headingText.includes("price")) {
+      pageIntent = "transactional";
+    }
+
+    if (
+      headingText.includes("best") ||
+      headingText.includes("top") ||
+      headingText.includes("vs")
+    ) {
+      pageIntent = "comparison";
+    }
+
+    intent.page = pageIntent;
+
+    // -----------------------------
+    // 3. STATUS (MATCH / MISMATCH)
+    // -----------------------------
+    intent.status =
+      intent.serp === intent.page ? "match" : "mismatch";
+
+    // 🚨 SAFETY FALLBACK (NEVER UNKNOWN)
+    if (!intent.serp || intent.serp === "unknown") {
       intent.serp = "informational";
       intent.confidence = 0.4;
     }
 
-    if (!intent.page) {
-      intent.page = "informational";
-    }
-
-    if (!intent.status) {
-      intent.status =
-        intent.serp === intent.page ? "match" : "mismatch";
-    }
-
     // -----------------------------
-    // 2. EXPECTED SECTIONS
+    // 4. EXPECTED SECTIONS
     // -----------------------------
     const expectedSections = sectionRules(intent.serp);
 
     // -----------------------------
-    // 3. MATCH SECTIONS
+    // 5. MATCH SECTIONS
     // -----------------------------
     const sectionMatch = matchSections({
       headings,
@@ -56,19 +77,19 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     });
 
     // -----------------------------
-    // 4. EVALUATE SECTIONS
+    // 6. EVALUATE SECTIONS
     // -----------------------------
     const evaluated = evaluateSections(sectionMatch);
 
     // -----------------------------
-    // 5. ACTIONS (SAFE)
+    // 7. ACTIONS
     // -----------------------------
     let actions = prioritizeActions({
       intent,
       evaluated
     });
 
-    // 🚨 NEVER empty actions
+    // 🚨 NEVER RETURN EMPTY ACTIONS
     if (!actions || actions.length === 0) {
       actions = [
         {
@@ -81,7 +102,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     }
 
     // -----------------------------
-    // 6. CONFIDENCE (FIXED)
+    // 8. CONFIDENCE (REAL SYSTEM)
     // -----------------------------
     const confidence = resolveConfidence({
       serpLive: serpSource === "live",
@@ -89,7 +110,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     });
 
     // -----------------------------
-    // 7. COMPETITIVE SCORE (v4.2)
+    // 9. COMPETITIVE SCORE (v4.2)
     // -----------------------------
     let score = 100;
 
@@ -106,7 +127,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 40) level = "critical";
 
     // -----------------------------
-    // 8. COMPETITOR DELTA (v4.2)
+    // 10. COMPETITOR DELTA (v4.2)
     // -----------------------------
     const competitorAverage = 65;
     const delta = score - competitorAverage;
