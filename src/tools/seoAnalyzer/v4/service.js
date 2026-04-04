@@ -7,19 +7,36 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 export async function runSeoAnalyzerV4({ v3Result }) {
   try {
-    const raw =
+    /* -----------------------------
+       HEADINGS + CONTENT
+    ----------------------------- */
+    const rawHeadings =
       v3Result?.extracted?.headings?.structure || {};
 
     const headings = [
-      ...(raw.h1 || []),
-      ...(raw.h2 || []),
-      ...(raw.h3 || [])
+      ...(rawHeadings.h1 || []),
+      ...(rawHeadings.h2 || []),
+      ...(rawHeadings.h3 || [])
     ];
 
     const safeHeadings = Array.isArray(headings) ? headings : [];
 
+    // 🔥 NEW: full page text for deeper detection
+    const pageText =
+      v3Result?.extracted?.text?.content || "";
+
+    /* -----------------------------
+       SERP TITLES
+    ----------------------------- */
     let serpTitles = v3Result?.serp?.titles || [];
 
+    if (!serpTitles.length) {
+      serpTitles = ["what is", "best", "how to"];
+    }
+
+    /* -----------------------------
+       HYBRID INTENT
+    ----------------------------- */
     const serpIntentResult = detectSerpIntent(serpTitles);
 
     const intent = {
@@ -29,15 +46,30 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       confidence: serpIntentResult.confidence
     };
 
-    const text = safeHeadings.join(" ").toLowerCase();
+    /* -----------------------------
+       PAGE INTENT
+    ----------------------------- */
+    const combinedText = (
+      safeHeadings.join(" ") +
+      " " +
+      pageText
+    ).toLowerCase();
 
     let pageIntent = "informational";
 
-    if (text.includes("buy") || text.includes("price")) {
+    if (
+      combinedText.includes("buy") ||
+      combinedText.includes("price") ||
+      combinedText.includes("pricing")
+    ) {
       pageIntent = "transactional";
     }
 
-    if (text.includes("best") || text.includes("vs")) {
+    if (
+      combinedText.includes("best") ||
+      combinedText.includes("vs") ||
+      combinedText.includes("compare")
+    ) {
       pageIntent = "comparison";
     }
 
@@ -45,23 +77,41 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     intent.status =
       intent.primary === intent.page ? "match" : "mismatch";
 
-    const expected = getSectionRules(intent.primary);
-    const match = matchSections(expected, safeHeadings);
-    const evaluated = evaluateSections(match);
+    /* -----------------------------
+       SECTION ANALYSIS
+    ----------------------------- */
+    const expectedSections = getSectionRules(intent.primary);
 
-    const missingLabels = evaluated.missing.map(s => s.label);
+    const sectionMatch = matchSections(
+      expectedSections,
+      safeHeadings,
+      pageText // 🔥 critical upgrade
+    );
+
+    const evaluated = evaluateSections(sectionMatch);
+
     const presentLabels = evaluated.present.map(s => s.label);
+    const missingLabels = evaluated.missing.map(s => s.label);
 
+    /* -----------------------------
+       ACTIONS
+    ----------------------------- */
     const actions = prioritizeActions({
       intent,
       missingSections: missingLabels
     });
 
+    /* -----------------------------
+       CONFIDENCE
+    ----------------------------- */
     const confidence = resolveConfidence({
       serpLive: v3Result?.context?.serpSource === "live",
       intentConfidence: intent.confidence
     });
 
+    /* -----------------------------
+       SCORING
+    ----------------------------- */
     let score = 100;
 
     if (intent.status === "mismatch") score -= 25;
@@ -76,9 +126,15 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 60) level = "weak";
     if (score < 40) level = "critical";
 
+    /* -----------------------------
+       COMPETITOR INSIGHTS
+    ----------------------------- */
     const topCompetitors =
       v3Result?.competitors?.slice(0, 3).map(c => c.title);
 
+    /* -----------------------------
+       FINAL RESPONSE
+    ----------------------------- */
     return {
       intent: {
         primary: intent.primary,
@@ -88,19 +144,24 @@ export async function runSeoAnalyzerV4({ v3Result }) {
         status: intent.status,
         confidence: intent.confidence
       },
+
       sections: {
         present: presentLabels,
         missing: missingLabels,
         missingBySeverity: evaluated.missingBySeverity
       },
+
       actions,
+
       insights: {
         topCompetitors:
           topCompetitors?.length
             ? topCompetitors
             : ["Fallback mode"]
       },
+
       confidence,
+
       competitive: {
         score,
         level
@@ -108,7 +169,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     };
 
   } catch (err) {
-    console.error("V4 ERROR:", err);
+    console.error("V4 SERVICE ERROR:", err);
     throw err;
   }
 }
