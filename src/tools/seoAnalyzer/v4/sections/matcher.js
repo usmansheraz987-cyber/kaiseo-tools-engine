@@ -14,8 +14,7 @@ function matchesComparison(heading) {
     heading.includes("versus") ||
     heading.includes("best") ||
     heading.includes("top") ||
-    heading.includes("review") ||
-    heading.includes("comparison")
+    heading.includes("review")
   );
 }
 
@@ -42,6 +41,15 @@ function matchesAlternatives(heading) {
     heading.includes("alternative") ||
     heading.includes("competitor") ||
     heading.includes("similar")
+  );
+}
+
+function matchesDefinition(heading) {
+  return (
+    heading.includes("what is") ||
+    heading.includes("introduction") ||
+    heading.includes("overview") ||
+    heading.includes("explained")
   );
 }
 
@@ -72,6 +80,10 @@ export function matchSections(expectedSections, headings) {
 
         case "alternatives":
           if (matchesAlternatives(heading)) found = true;
+          break;
+
+        case "definition":
+          if (matchesDefinition(heading)) found = true;
           break;
 
         default:

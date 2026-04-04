@@ -20,20 +20,14 @@ export async function runSeoAnalyzerV4({ v3Result }) {
 
     let serpTitles = v3Result?.serp?.titles || [];
 
-    if (!serpTitles.length) {
-      serpTitles = ["what is", "how to", "guide"];
-    }
-
     const serpIntentResult = detectSerpIntent(serpTitles);
 
-    let intent = {
-      serp: serpIntentResult.intent || "informational",
-      confidence: serpIntentResult.confidence || 0.4
+    const intent = {
+      primary: serpIntentResult.primary,
+      secondary: serpIntentResult.secondary,
+      distribution: serpIntentResult.distribution,
+      confidence: serpIntentResult.confidence
     };
-
-    if (!intent.serp || intent.serp === "unknown") {
-      intent.serp = "informational";
-    }
 
     const text = safeHeadings.join(" ").toLowerCase();
 
@@ -49,9 +43,9 @@ export async function runSeoAnalyzerV4({ v3Result }) {
 
     intent.page = pageIntent;
     intent.status =
-      intent.serp === intent.page ? "match" : "mismatch";
+      intent.primary === intent.page ? "match" : "mismatch";
 
-    const expected = getSectionRules(intent.serp);
+    const expected = getSectionRules(intent.primary);
     const match = matchSections(expected, safeHeadings);
     const evaluated = evaluateSections(match);
 
@@ -86,7 +80,14 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       v3Result?.competitors?.slice(0, 3).map(c => c.title);
 
     return {
-      intent,
+      intent: {
+        primary: intent.primary,
+        secondary: intent.secondary,
+        distribution: intent.distribution,
+        page: intent.page,
+        status: intent.status,
+        confidence: intent.confidence
+      },
       sections: {
         present: presentLabels,
         missing: missingLabels,
@@ -97,7 +98,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
         topCompetitors:
           topCompetitors?.length
             ? topCompetitors
-            : ["No live SERP data (fallback mode)"]
+            : ["Fallback mode"]
       },
       confidence,
       competitive: {

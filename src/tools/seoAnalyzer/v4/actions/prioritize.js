@@ -4,33 +4,39 @@ export function prioritizeActions({
 }) {
   const actions = [];
 
-  // Intent mismatch = highest priority
   if (intent.status === "mismatch") {
     actions.push({
       priority: 1,
-      action: "Rewrite page to match search intent",
+      action: `Align content with ${intent.primary} intent`,
       reason:
-        "Google ranks a different type of content for this query"
+        "Your page does not match dominant SERP behavior"
     });
   }
 
-  // Section gaps
-  if (missingSections.length) {
+  if (intent.secondary) {
     actions.push({
       priority: 2,
-      action: `Add sections: ${missingSections.join(", ")}`,
+      action: `Also support ${intent.secondary} intent`,
       reason:
-        "These sections improve clarity and align with top-ranking pages"
+        "SERP shows mixed intent — covering both increases ranking potential"
     });
   }
 
-  // Never return empty
-  if (!actions.length) {
+  if (missingSections.length) {
     actions.push({
       priority: 3,
+      action: `Add sections: ${missingSections.join(", ")}`,
+      reason:
+        "These sections are consistently present in top results"
+    });
+  }
+
+  if (!actions.length) {
+    actions.push({
+      priority: 4,
       action: "Improve content depth",
       reason:
-        "Content lacks strong structural and informational signals"
+        "Content lacks strong signals compared to competitors"
     });
   }
 
