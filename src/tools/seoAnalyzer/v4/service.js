@@ -1,5 +1,5 @@
 import { detectSerpIntent } from "./intent/detectIntent.js";
-import { sectionRules } from "./sections/rules.js";
+import { getSectionRules } from "./sections/rules.js";
 import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
 import { prioritizeActions } from "./actions/prioritize.js";
@@ -66,15 +66,12 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     // -----------------------------
     // 4. EXPECTED SECTIONS
     // -----------------------------
-    const expectedSections = sectionRules(intent.serp);
+    const expectedSections = getSectionRules(intent.serp);
 
     // -----------------------------
     // 5. MATCH SECTIONS
     // -----------------------------
-    const sectionMatch = matchSections({
-      headings,
-      expectedSections
-    });
+    const sectionMatch = matchSections(expectedSections, headings);
 
     // -----------------------------
     // 6. EVALUATE SECTIONS
@@ -84,10 +81,12 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     // -----------------------------
     // 7. ACTIONS
     // -----------------------------
-    let actions = prioritizeActions({
-      intent,
-      evaluated
-    });
+   let actions = prioritizeActions({
+  intent,
+  missingSections: evaluated.missing || [],
+  weakSections: [],
+  hasCriticalTechnicalIssues: false
+});
 
     // 🚨 NEVER RETURN EMPTY ACTIONS
     if (!actions || actions.length === 0) {
