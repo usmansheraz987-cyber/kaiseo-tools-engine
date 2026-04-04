@@ -60,23 +60,15 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     const match = matchSections(expected, safeHeadings);
     const evaluated = evaluateSections(match);
 
-    /* ---------- ACTIONS ---------- */
-    let actions = prioritizeActions({
-      intent,
-      missingSections: evaluated.missing.map(s => s.label),
-      weakSections: [],
-      hasCriticalTechnicalIssues: false
-    });
+    // UI-ready labels
+    const missingLabels = evaluated.missing.map(s => s.label);
+    const presentLabels = evaluated.present.map(s => s.label);
 
-    if (!actions.length) {
-      actions = [
-        {
-          priority: 1,
-          action: "Improve content depth",
-          reason: "Low structural alignment"
-        }
-      ];
-    }
+    /* ---------- ACTIONS ---------- */
+    const actions = prioritizeActions({
+      intent,
+      missingSections: missingLabels
+    });
 
     /* ---------- CONFIDENCE ---------- */
     const confidence = resolveConfidence({
@@ -99,12 +91,27 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 60) level = "weak";
     if (score < 40) level = "critical";
 
+    /* ---------- COMPETITOR INSIGHTS ---------- */
+    const topCompetitors =
+      v3Result?.competitors?.slice(0, 3).map(c => c.title) || [];
+
+    /* ---------- FINAL ---------- */
     return {
       intent,
-      sections: evaluated,
+      sections: {
+        present: presentLabels,
+        missing: missingLabels,
+        missingBySeverity: evaluated.missingBySeverity
+      },
       actions,
+      insights: {
+        topCompetitors
+      },
       confidence,
-      competitive: { score, level }
+      competitive: {
+        score,
+        level
+      }
     };
 
   } catch (err) {

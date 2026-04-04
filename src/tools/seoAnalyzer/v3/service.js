@@ -11,7 +11,9 @@ import {
 import { calculateRelativeScore } from "./scoring/relativeScoring.js";
 import { buildCompetitorInsights } from "./competitors/insights.js";
 
-/* -------------------- */
+/* --------------------
+   CACHE + QUOTA
+-------------------- */
 const SERP_CACHE_TTL = 24 * 60 * 60 * 1000;
 const serpCache = new Map();
 
@@ -99,7 +101,7 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       pageContent: contentSignals
     });
 
-    /* ---------- SERP TITLES BRIDGE (CRITICAL) ---------- */
+    /* ---------- SERP TITLES BRIDGE ---------- */
     const serpTitles = competitors.map(c => c.title).filter(Boolean);
 
     /* ---------- FINAL ---------- */

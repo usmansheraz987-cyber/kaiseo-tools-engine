@@ -1,31 +1,20 @@
-/**
- * Normalize text for safe matching
- */
-function normalize(text = "") {
-  return text.toLowerCase().trim();
+function normalize(text) {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .trim();
 }
 
-/**
- * Match expected sections against page headings
- *
- * @param {Array} expectedSections - from rules.js
- * @param {Array<string>} pageHeadings - extracted h1–h6 text
- *
- * @returns {{
- *   present: Array,
- *   missing: Array
- * }}
- */
-export function matchSections(expectedSections = [], pageHeadings = []) {
-  const normalizedHeadings = pageHeadings.map(normalize);
+export function matchSections(expectedSections, headings) {
+  const normalizedHeadings = headings.map(h => normalize(h));
 
   const present = [];
   const missing = [];
 
   for (const section of expectedSections) {
-    const found = normalizedHeadings.some(heading =>
-      section.patterns.some(pattern =>
-        heading.includes(normalize(pattern))
+    const found = section.patterns.some(pattern =>
+      normalizedHeadings.some(h =>
+        h.includes(normalize(pattern))
       )
     );
 
@@ -36,8 +25,5 @@ export function matchSections(expectedSections = [], pageHeadings = []) {
     }
   }
 
-  return {
-    present,
-    missing
-  };
+  return { present, missing };
 }
