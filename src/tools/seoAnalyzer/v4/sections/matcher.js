@@ -5,14 +5,38 @@ function normalize(text) {
     .trim();
 }
 
-function isSemanticMatch(heading) {
+function matchesDefinition(heading) {
   return (
-    heading.includes("what") ||
+    heading.includes("what is") ||
     heading.includes("introduction") ||
     heading.includes("overview") ||
-    heading.includes("guide") ||
     heading.includes("explained") ||
-    heading.includes("basics")
+    heading.includes("meaning")
+  );
+}
+
+function matchesExamples(heading) {
+  return (
+    heading.includes("example") ||
+    heading.includes("use case") ||
+    heading.includes("case study")
+  );
+}
+
+function matchesHowItWorks(heading) {
+  return (
+    heading.includes("how it works") ||
+    heading.includes("how it work") ||
+    heading.includes("process") ||
+    heading.includes("workflow")
+  );
+}
+
+function matchesFAQ(heading) {
+  return (
+    heading.includes("faq") ||
+    heading.includes("questions") ||
+    heading.includes("q&a")
   );
 }
 
@@ -26,14 +50,33 @@ export function matchSections(expectedSections, headings) {
     let found = false;
 
     for (const heading of normalizedHeadings) {
-      for (const pattern of section.patterns) {
-        const p = normalize(pattern);
-
-        if (heading.includes(p) || isSemanticMatch(heading)) {
-          found = true;
+      switch (section.key) {
+        case "definition":
+          if (matchesDefinition(heading)) found = true;
           break;
-        }
+
+        case "examples":
+          if (matchesExamples(heading)) found = true;
+          break;
+
+        case "how_it_works":
+          if (matchesHowItWorks(heading)) found = true;
+          break;
+
+        case "faq":
+          if (matchesFAQ(heading)) found = true;
+          break;
+
+        default:
+          if (
+            section.patterns.some(p =>
+              heading.includes(normalize(p))
+            )
+          ) {
+            found = true;
+          }
       }
+
       if (found) break;
     }
 
