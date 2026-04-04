@@ -7,11 +7,11 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 export async function runSeoAnalyzerV4({ v3Result }) {
   try {
-    // -----------------------------
-    // SAFE HEADING EXTRACTION (FIXED)
-    // -----------------------------
+    /* -----------------------------
+       SAFE HEADING EXTRACTION
+    ----------------------------- */
     const rawHeadings =
-      v3Result?.data?.extracted?.headings?.structure || {};
+      v3Result?.extracted?.headings?.structure || {};
 
     const headings = [
       ...(rawHeadings.h1 || []),
@@ -25,14 +25,14 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     const safeHeadings = Array.isArray(headings) ? headings : [];
 
     const serpTitles =
-      v3Result?.data?.serp?.titles || [];
+      v3Result?.serp?.titles || [];
 
     const serpSource =
-      v3Result?.data?.serp?.source || "fallback";
+      v3Result?.context?.serpSource || "fallback";
 
-    // -----------------------------
-    // 1. SERP INTENT
-    // -----------------------------
+    /* -----------------------------
+       1. INTENT
+    ----------------------------- */
     const serpIntentResult = detectSerpIntent(serpTitles);
 
     let intent = {
@@ -41,9 +41,9 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       breakdown: serpIntentResult.breakdown || {}
     };
 
-    // -----------------------------
-    // 2. PAGE INTENT
-    // -----------------------------
+    /* -----------------------------
+       2. PAGE INTENT
+    ----------------------------- */
     const headingText = safeHeadings.join(" ").toLowerCase();
 
     let pageIntent = "informational";
@@ -62,30 +62,27 @@ export async function runSeoAnalyzerV4({ v3Result }) {
 
     intent.page = pageIntent;
 
-    // -----------------------------
-    // 3. STATUS
-    // -----------------------------
+    /* -----------------------------
+       3. STATUS
+    ----------------------------- */
     intent.status =
       intent.serp === intent.page ? "match" : "mismatch";
 
-    // -----------------------------
-    // 4. EXPECTED SECTIONS
-    // -----------------------------
+    /* -----------------------------
+       4. SECTIONS
+    ----------------------------- */
     const expectedSections = getSectionRules(intent.serp);
 
-    // -----------------------------
-    // 5. MATCH SECTIONS
-    // -----------------------------
-    const sectionMatch = matchSections(expectedSections, safeHeadings);
+    const sectionMatch = matchSections(
+      expectedSections,
+      safeHeadings
+    );
 
-    // -----------------------------
-    // 6. EVALUATE
-    // -----------------------------
     const evaluated = evaluateSections(sectionMatch);
 
-    // -----------------------------
-    // 7. ACTIONS (FIXED INPUT)
-    // -----------------------------
+    /* -----------------------------
+       5. ACTIONS
+    ----------------------------- */
     let actions = prioritizeActions({
       intent,
       missingSections: evaluated.missing.map(s => s.label),
@@ -93,28 +90,27 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       hasCriticalTechnicalIssues: false
     });
 
-    if (!actions || actions.length === 0) {
+    if (!actions.length) {
       actions = [
         {
           priority: 1,
           action: "Improve alignment with search intent",
-          reason:
-            "Content does not strongly match dominant SERP intent"
+          reason: "Content does not strongly match SERP intent"
         }
       ];
     }
 
-    // -----------------------------
-    // 8. CONFIDENCE
-    // -----------------------------
+    /* -----------------------------
+       6. CONFIDENCE
+    ----------------------------- */
     const confidence = resolveConfidence({
       serpLive: serpSource === "live",
       intentConfidence: intent.confidence
     });
 
-    // -----------------------------
-    // 9. SCORE (FIXED)
-    // -----------------------------
+    /* -----------------------------
+       7. SCORE
+    ----------------------------- */
     let score = 100;
 
     if (intent.status === "mismatch") score -= 25;
@@ -129,19 +125,9 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 60) level = "weak";
     if (score < 40) level = "critical";
 
-    // -----------------------------
-    // 10. DELTA
-    // -----------------------------
-    const competitorAverage = 65;
-    const delta = score - competitorAverage;
-
-    let position = "ahead";
-    if (delta < 0) position = "behind";
-    if (delta < -20) position = "far_behind";
-
-    // -----------------------------
-    // FINAL RESPONSE
-    // -----------------------------
+    /* -----------------------------
+       FINAL
+    ----------------------------- */
     return {
       intent,
       sections: evaluated,
@@ -150,16 +136,11 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       competitive: {
         score,
         level
-      },
-      delta: {
-        average: competitorAverage,
-        delta,
-        position
       }
     };
 
   } catch (err) {
-    console.error("V4 Service Error:", err);
+    console.error("V4 SERVICE ERROR:", err);
     throw err;
   }
 }
