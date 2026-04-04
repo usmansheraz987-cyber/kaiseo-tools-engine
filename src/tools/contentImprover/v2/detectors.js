@@ -5,7 +5,7 @@ import {
   countWords,
   getKeywordDensity,
   getRepeatedPhrases
-} from "./utils.js";
+} from "../v1/utils.js"; // ✅ FIXED PATH
 
 export function runDetectors(content, keyword) {
   const sentences = splitSentences(content);

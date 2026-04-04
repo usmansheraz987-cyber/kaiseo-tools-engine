@@ -8,15 +8,16 @@ export function analyzeContent({ content, keyword }) {
 
   const metrics = calculateMetrics(content, keyword);
 
-  const { content_score, subscores } =
-    calculateScores({
-      sentenceIssues,
-      metrics,
-      keyword
-    });
+  const { content_score, subscores } = calculateScores({
+    sentenceIssues,
+    metrics,
+    keyword
+  });
 
-  const impact_projection =
-    calculateProjection(content_score, sentenceIssues);
+  const impact_projection = calculateProjection(
+    content_score,
+    sentenceIssues
+  );
 
   return {
     content_score,
