@@ -3,28 +3,34 @@ import { sectionRules } from "./sections/rules.js";
 import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
 import { prioritizeActions } from "./actions/prioritize.js";
-import { confidenceScore } from "./confidence/confidenceScore.js";
+import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 export async function runSeoAnalyzerV4({ v3Result }) {
   try {
+    // -----------------------------
+    // SAFE EXTRACTION
+    // -----------------------------
     const headings =
       v3Result?.data?.extracted?.headings?.structure?.h1 || [];
 
     const serpTitles =
       v3Result?.data?.serp?.titles || [];
 
+    const serpSource =
+      v3Result?.data?.serp?.source || "fallback";
+
     // -----------------------------
-    // 1. Intent Detection (FIXED)
+    // 1. INTENT DETECTION (SAFE)
     // -----------------------------
     let intent = detectIntent({
       serpTitles,
       headings
     });
 
-    // 🚨 fallback intent (never unknown)
+    // 🚨 NEVER allow undefined intent
     if (!intent.serp) {
       intent.serp = "informational";
-      intent.confidence = 0.3;
+      intent.confidence = 0.4;
     }
 
     if (!intent.page) {
@@ -37,12 +43,12 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     }
 
     // -----------------------------
-    // 2. Section Rules
+    // 2. EXPECTED SECTIONS
     // -----------------------------
     const expectedSections = sectionRules(intent.serp);
 
     // -----------------------------
-    // 3. Match Sections
+    // 3. MATCH SECTIONS
     // -----------------------------
     const sectionMatch = matchSections({
       headings,
@@ -50,19 +56,19 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     });
 
     // -----------------------------
-    // 4. Evaluate
+    // 4. EVALUATE SECTIONS
     // -----------------------------
     const evaluated = evaluateSections(sectionMatch);
 
     // -----------------------------
-    // 5. Actions
+    // 5. ACTIONS (SAFE)
     // -----------------------------
     let actions = prioritizeActions({
       intent,
       evaluated
     });
 
-    // 🚨 fallback actions (never empty)
+    // 🚨 NEVER empty actions
     if (!actions || actions.length === 0) {
       actions = [
         {
@@ -75,19 +81,20 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     }
 
     // -----------------------------
-    // 6. Confidence
+    // 6. CONFIDENCE (FIXED)
     // -----------------------------
-    const confidence = confidenceScore({
-      intent,
-      evaluated
+    const confidence = resolveConfidence({
+      serpLive: serpSource === "live",
+      intentConfidence: intent.confidence || 0.4
     });
 
     // -----------------------------
-    // 7. Competitive Score (NEW)
+    // 7. COMPETITIVE SCORE (v4.2)
     // -----------------------------
     let score = 100;
 
     if (intent.status === "mismatch") score -= 25;
+
     score -= evaluated.missing.high.length * 10;
     score -= evaluated.missing.medium.length * 5;
 
@@ -99,7 +106,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 40) level = "critical";
 
     // -----------------------------
-    // 8. Competitor Delta (NEW)
+    // 8. COMPETITOR DELTA (v4.2)
     // -----------------------------
     const competitorAverage = 65;
     const delta = score - competitorAverage;
@@ -108,6 +115,9 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (delta < 0) position = "behind";
     if (delta < -20) position = "far_behind";
 
+    // -----------------------------
+    // FINAL RESPONSE
+    // -----------------------------
     return {
       intent,
       sections: evaluated,
