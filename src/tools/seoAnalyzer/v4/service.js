@@ -6,8 +6,15 @@ import { getSectionRules } from "./sections/rules.js";
 import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
 
+import {
+  calculateCompetitiveScore,
+  getCompetitiveLevel
+} from "./scoring/competitiveScore.js";
+
+import { calculateCompetitorDelta } from "./scoring/competitorDelta.js";
+
 /**
- * SEO Analyzer v4 (UPGRADED)
+ * SEO Analyzer v4.2 (FINAL)
  */
 export async function runSeoAnalyzerV4({ v3Result }) {
   if (!v3Result) {
@@ -35,11 +42,10 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     Boolean(v3Result?.score?.hasCriticalIndexabilityFail);
 
   /* --------------------
-     Intent detection (FIXED)
+     Intent detection
   -------------------- */
   let serpIntent = detectSerpIntent(serpTitles);
 
-  // 🔥 fallback (NEVER allow unknown)
   if (serpIntent.intent === "unknown") {
     serpIntent = {
       intent: "informational",
@@ -48,7 +54,6 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     };
   }
 
-  // 🔥 simple page intent detection (better than hardcode)
   const pageIntent =
     pageHeadings.length > 5 ? "informational" : "transactional";
 
@@ -58,7 +63,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       : "mismatch";
 
   /* --------------------
-     Section rules
+     Section logic
   -------------------- */
   const expectedSections = getSectionRules(serpIntent.intent);
 
@@ -75,7 +80,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       : sectionEval.missing;
 
   /* --------------------
-     Build actions (FIXED)
+     Actions
   -------------------- */
   let actions = prioritizeActions({
     intent: { status: intentStatus },
@@ -84,7 +89,6 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     hasCriticalTechnicalIssues
   });
 
-  // 🔥 fallback action (CRITICAL UX FIX)
   if (actions.length === 0) {
     actions = [
       {
@@ -96,7 +100,27 @@ export async function runSeoAnalyzerV4({ v3Result }) {
   }
 
   /* --------------------
-     Confidence (slightly boosted)
+     Competitive score (v4.2)
+  -------------------- */
+  const competitiveScore = calculateCompetitiveScore({
+    intentStatus,
+    missingSections: sectionEval.missing,
+    hasCriticalTechnicalIssues
+  });
+
+  const competitiveLevel =
+    getCompetitiveLevel(competitiveScore);
+
+  /* --------------------
+     Competitor delta (NEW)
+  -------------------- */
+  const competitorDelta = calculateCompetitorDelta({
+    yourScore: competitiveScore,
+    competitors: v3Result.competitors
+  });
+
+  /* --------------------
+     Confidence
   -------------------- */
   const confidence = resolveConfidence({
     serpLive,
@@ -122,6 +146,14 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       }))
     },
     actions,
-    confidence
+    confidence,
+
+    // 🔥 v4.2 output
+    competitive: {
+      score: competitiveScore,
+      level: competitiveLevel
+    },
+
+    delta: competitorDelta
   };
 }

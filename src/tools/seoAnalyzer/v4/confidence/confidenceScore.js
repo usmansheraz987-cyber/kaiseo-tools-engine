@@ -1,20 +1,15 @@
 import { WEIGHTS } from "../constants/weights.js";
 
-/**
- * Resolve confidence level for v4 decisions
- *
- * @param {object} params
- * @param {boolean} params.serpLive
- * @param {number} params.intentConfidence
- *
- * @returns {"high" | "medium" | "low"}
- */
 export function resolveConfidence({ serpLive, intentConfidence }) {
-  if (serpLive && intentConfidence >= WEIGHTS.CONFIDENCE.HIGH) {
+
+  // 🔥 baseline boost (avoid useless "low")
+  const adjustedConfidence = Math.max(intentConfidence, 0.4);
+
+  if (serpLive && adjustedConfidence >= WEIGHTS.CONFIDENCE.HIGH) {
     return "high";
   }
 
-  if (intentConfidence >= WEIGHTS.CONFIDENCE.MEDIUM) {
+  if (adjustedConfidence >= WEIGHTS.CONFIDENCE.MEDIUM) {
     return "medium";
   }
 
