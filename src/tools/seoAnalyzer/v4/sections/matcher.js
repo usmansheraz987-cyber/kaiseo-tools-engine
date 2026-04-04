@@ -5,40 +5,47 @@ function normalize(text) {
     .trim();
 }
 
-function matchesDefinition(heading) {
+/* ---------- MATCHERS ---------- */
+
+function matchesComparison(heading) {
   return (
-    heading.includes("what is") ||
-    heading.includes("introduction") ||
-    heading.includes("overview") ||
-    heading.includes("explained") ||
-    heading.includes("meaning")
+    heading.includes("compare") ||
+    heading.includes("vs") ||
+    heading.includes("versus") ||
+    heading.includes("best") ||
+    heading.includes("top") ||
+    heading.includes("review") ||
+    heading.includes("comparison")
   );
 }
 
-function matchesExamples(heading) {
+function matchesPricing(heading) {
   return (
-    heading.includes("example") ||
-    heading.includes("use case") ||
-    heading.includes("case study")
+    heading.includes("price") ||
+    heading.includes("pricing") ||
+    heading.includes("cost") ||
+    heading.includes("plans")
   );
 }
 
-function matchesHowItWorks(heading) {
+function matchesProsCons(heading) {
   return (
-    heading.includes("how it works") ||
-    heading.includes("how it work") ||
-    heading.includes("process") ||
-    heading.includes("workflow")
+    heading.includes("pros") ||
+    heading.includes("cons") ||
+    heading.includes("advantages") ||
+    heading.includes("disadvantages")
   );
 }
 
-function matchesFAQ(heading) {
+function matchesAlternatives(heading) {
   return (
-    heading.includes("faq") ||
-    heading.includes("questions") ||
-    heading.includes("q&a")
+    heading.includes("alternative") ||
+    heading.includes("competitor") ||
+    heading.includes("similar")
   );
 }
+
+/* ---------- MAIN ---------- */
 
 export function matchSections(expectedSections, headings) {
   const normalizedHeadings = headings.map(h => normalize(h));
@@ -51,20 +58,20 @@ export function matchSections(expectedSections, headings) {
 
     for (const heading of normalizedHeadings) {
       switch (section.key) {
-        case "definition":
-          if (matchesDefinition(heading)) found = true;
+        case "comparison_table":
+          if (matchesComparison(heading)) found = true;
           break;
 
-        case "examples":
-          if (matchesExamples(heading)) found = true;
+        case "pricing":
+          if (matchesPricing(heading)) found = true;
           break;
 
-        case "how_it_works":
-          if (matchesHowItWorks(heading)) found = true;
+        case "pros_cons":
+          if (matchesProsCons(heading)) found = true;
           break;
 
-        case "faq":
-          if (matchesFAQ(heading)) found = true;
+        case "alternatives":
+          if (matchesAlternatives(heading)) found = true;
           break;
 
         default:
