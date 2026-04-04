@@ -11,15 +11,10 @@ import {
 import { calculateRelativeScore } from "./scoring/relativeScoring.js";
 import { buildCompetitorInsights } from "./competitors/insights.js";
 
-/* --------------------
-   SERP CACHE (24h)
--------------------- */
+/* -------------------- */
 const SERP_CACHE_TTL = 24 * 60 * 60 * 1000;
 const serpCache = new Map();
 
-/* --------------------
-   QUOTA GUARD
--------------------- */
 const MAX_SERP_CALLS_PER_HOUR = 200;
 let serpCalls = 0;
 let serpWindowStart = Date.now();
@@ -35,40 +30,22 @@ function canUseSerpQuota() {
   return serpCalls < MAX_SERP_CALLS_PER_HOUR;
 }
 
-/* ====================
-   MAIN RUNNER
-==================== */
+/* ==================== */
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   try {
-    if (!url) {
-      throw new Error("URL is required for v3 analysis");
-    }
+    if (!url) throw new Error("URL required");
+    if (!primaryQuery) throw new Error("primaryQuery required");
 
-    if (!primaryQuery || primaryQuery.trim().length < 3) {
-      throw new Error("primaryQuery is required for v3 analysis");
-    }
-
-    /* --------------------
-       1️⃣ Run v2
-    -------------------- */
+    /* ---------- V2 ---------- */
     const v2Result = await runSeoAnalyzerV2({ url });
-
     const extracted = v2Result?.data?.extracted || {};
 
-    // ✅ SAFE CONTENT SIGNALS (FIXED)
     const contentSignals = {
       cleanWordCount: extracted.cleanWordCount || 0,
       paragraphCount: extracted.paragraphCount || 0
     };
 
-    // 🚨 NEVER CRASH — just warn
-    if (!contentSignals.cleanWordCount) {
-      console.warn("⚠️ Missing cleanWordCount from v2");
-    }
-
-    /* --------------------
-       2️⃣ SERP (cache → live → fallback)
-    -------------------- */
+    /* ---------- SERP ---------- */
     let serpBenchmarks;
     let competitors = [];
     let usedFallback = false;
@@ -82,12 +59,13 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     } else {
       try {
         if (!canUseSerpQuota() || !canCallSerp()) {
-          throw new Error("SERP_GUARDED");
+          throw new Error("SERP_BLOCKED");
         }
 
         serpCalls++;
 
         const serpData = await fetchSerpResults(primaryQuery);
+
         recordSerpSuccess();
 
         serpBenchmarks = serpData.benchmarks;
@@ -100,8 +78,6 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
         });
 
       } catch (err) {
-        console.warn("SERP FALLBACK USED:", err.message);
-
         recordSerpFailure();
         usedFallback = true;
 
@@ -110,34 +86,33 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       }
     }
 
-    /* --------------------
-       3️⃣ Relative scoring
-    -------------------- */
+    /* ---------- SCORING ---------- */
     const relativeScore = calculateRelativeScore({
       pageContent: contentSignals,
       serpBenchmarks,
       usedFallback
     });
 
-    /* --------------------
-       4️⃣ Competitor insights
-    -------------------- */
     const competitorInsights = buildCompetitorInsights({
       competitors,
       serpBenchmarks,
       pageContent: contentSignals
     });
 
-    /* --------------------
-       5️⃣ FINAL RETURN (CLEAN STRUCTURE)
-    -------------------- */
+    /* ---------- SERP TITLES BRIDGE (CRITICAL) ---------- */
+    const serpTitles = competitors.map(c => c.title).filter(Boolean);
+
+    /* ---------- FINAL ---------- */
     return {
       ...v2Result.data,
 
       context: {
         query: primaryQuery,
-        serpSampleSize: 10,
         serpSource: usedFallback ? "fallback" : "live"
+      },
+
+      serp: {
+        titles: serpTitles
       },
 
       serpBenchmarks,
@@ -147,7 +122,7 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     };
 
   } catch (err) {
-    console.error("V3 SERVICE ERROR:", err);
+    console.error("V3 ERROR:", err);
     throw err;
   }
 }

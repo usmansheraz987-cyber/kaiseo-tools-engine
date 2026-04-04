@@ -7,82 +7,60 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 export async function runSeoAnalyzerV4({ v3Result }) {
   try {
-    /* -----------------------------
-       SAFE HEADING EXTRACTION
-    ----------------------------- */
-    const rawHeadings =
+    /* ---------- HEADINGS ---------- */
+    const raw =
       v3Result?.extracted?.headings?.structure || {};
 
     const headings = [
-      ...(rawHeadings.h1 || []),
-      ...(rawHeadings.h2 || []),
-      ...(rawHeadings.h3 || []),
-      ...(rawHeadings.h4 || []),
-      ...(rawHeadings.h5 || []),
-      ...(rawHeadings.h6 || [])
-    ].filter(Boolean);
+      ...(raw.h1 || []),
+      ...(raw.h2 || []),
+      ...(raw.h3 || [])
+    ];
 
     const safeHeadings = Array.isArray(headings) ? headings : [];
 
-    const serpTitles =
-      v3Result?.serp?.titles || [];
+    /* ---------- SERP TITLES ---------- */
+    let serpTitles = v3Result?.serp?.titles || [];
 
-    const serpSource =
-      v3Result?.context?.serpSource || "fallback";
+    if (!serpTitles.length) {
+      serpTitles = ["what is", "how to", "guide"];
+    }
 
-    /* -----------------------------
-       1. INTENT
-    ----------------------------- */
+    /* ---------- INTENT ---------- */
     const serpIntentResult = detectSerpIntent(serpTitles);
 
     let intent = {
       serp: serpIntentResult.intent || "informational",
-      confidence: serpIntentResult.confidence || 0.4,
-      breakdown: serpIntentResult.breakdown || {}
+      confidence: serpIntentResult.confidence || 0.4
     };
 
-    /* -----------------------------
-       2. PAGE INTENT
-    ----------------------------- */
-    const headingText = safeHeadings.join(" ").toLowerCase();
+    if (!intent.serp || intent.serp === "unknown") {
+      intent.serp = "informational";
+    }
+
+    /* ---------- PAGE INTENT ---------- */
+    const text = safeHeadings.join(" ").toLowerCase();
 
     let pageIntent = "informational";
 
-    if (headingText.includes("buy") || headingText.includes("price")) {
+    if (text.includes("buy") || text.includes("price")) {
       pageIntent = "transactional";
     }
 
-    if (
-      headingText.includes("best") ||
-      headingText.includes("top") ||
-      headingText.includes("vs")
-    ) {
+    if (text.includes("best") || text.includes("vs")) {
       pageIntent = "comparison";
     }
 
     intent.page = pageIntent;
-
-    /* -----------------------------
-       3. STATUS
-    ----------------------------- */
     intent.status =
       intent.serp === intent.page ? "match" : "mismatch";
 
-    /* -----------------------------
-       4. SECTIONS
-    ----------------------------- */
-    const expectedSections = getSectionRules(intent.serp);
+    /* ---------- SECTIONS ---------- */
+    const expected = getSectionRules(intent.serp);
+    const match = matchSections(expected, safeHeadings);
+    const evaluated = evaluateSections(match);
 
-    const sectionMatch = matchSections(
-      expectedSections,
-      safeHeadings
-    );
-
-    const evaluated = evaluateSections(sectionMatch);
-
-    /* -----------------------------
-       5. ACTIONS
-    ----------------------------- */
+    /* ---------- ACTIONS ---------- */
     let actions = prioritizeActions({
       intent,
       missingSections: evaluated.missing.map(s => s.label),
@@ -94,23 +72,19 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       actions = [
         {
           priority: 1,
-          action: "Improve alignment with search intent",
-          reason: "Content does not strongly match SERP intent"
+          action: "Improve content depth",
+          reason: "Low structural alignment"
         }
       ];
     }
 
-    /* -----------------------------
-       6. CONFIDENCE
-    ----------------------------- */
+    /* ---------- CONFIDENCE ---------- */
     const confidence = resolveConfidence({
-      serpLive: serpSource === "live",
+      serpLive: v3Result?.context?.serpSource === "live",
       intentConfidence: intent.confidence
     });
 
-    /* -----------------------------
-       7. SCORE
-    ----------------------------- */
+    /* ---------- SCORE ---------- */
     let score = 100;
 
     if (intent.status === "mismatch") score -= 25;
@@ -125,22 +99,16 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 60) level = "weak";
     if (score < 40) level = "critical";
 
-    /* -----------------------------
-       FINAL
-    ----------------------------- */
     return {
       intent,
       sections: evaluated,
       actions,
       confidence,
-      competitive: {
-        score,
-        level
-      }
+      competitive: { score, level }
     };
 
   } catch (err) {
-    console.error("V4 SERVICE ERROR:", err);
+    console.error("V4 ERROR:", err);
     throw err;
   }
 }

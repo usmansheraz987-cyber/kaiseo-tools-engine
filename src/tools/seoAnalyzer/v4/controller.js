@@ -4,12 +4,12 @@ import { getCache, setCache } from "../../../lib/cache/simpleCache.js";
 
 export async function seoAnalyzerV4Controller(req, res) {
   try {
-    const { url, primaryQuery } = req.body || {};
+    const { url, primaryQuery } = req.body;
 
     if (!url || !primaryQuery) {
       return res.status(400).json({
         success: false,
-        error: "url and primaryQuery are required"
+        error: "url and primaryQuery required"
       });
     }
 
@@ -19,7 +19,6 @@ export async function seoAnalyzerV4Controller(req, res) {
     if (cached) {
       return res.json({
         success: true,
-        version: "v4",
         cached: true,
         data: cached
       });
@@ -38,18 +37,16 @@ export async function seoAnalyzerV4Controller(req, res) {
 
     return res.json({
       success: true,
-      version: "v4",
       cached: false,
       data: v4Result
     });
 
   } catch (err) {
-    console.error("V4 CONTROLLER ERROR:", err);
+    console.error("API ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      error: err.message,
-      stack: err.stack
+      error: err.message
     });
   }
 }
