@@ -7,8 +7,7 @@ import { matchSections } from "./sections/matcher.js";
 import { evaluateSections } from "./sections/evaluator.js";
 
 /**
- * SEO Analyzer v4 + v4.1
- * Decision + Section Expectation Engine
+ * SEO Analyzer v4 (UPGRADED)
  */
 export async function runSeoAnalyzerV4({ v3Result }) {
   if (!v3Result) {
@@ -16,7 +15,7 @@ export async function runSeoAnalyzerV4({ v3Result }) {
   }
 
   /* --------------------
-     SERP titles (intent source)
+     SERP titles
   -------------------- */
   const serpTitles = Array.isArray(v3Result.competitors)
     ? v3Result.competitors.map(c => c?.title).filter(Boolean)
@@ -36,63 +35,76 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     Boolean(v3Result?.score?.hasCriticalIndexabilityFail);
 
   /* --------------------
-     Intent detection
+     Intent detection (FIXED)
   -------------------- */
-  const serpIntent = detectSerpIntent(serpTitles);
+  let serpIntent = detectSerpIntent(serpTitles);
 
-  // We keep page intent conservative for now
-  const pageIntent = "informational";
+  // 🔥 fallback (NEVER allow unknown)
+  if (serpIntent.intent === "unknown") {
+    serpIntent = {
+      intent: "informational",
+      confidence: 0.3,
+      breakdown: {}
+    };
+  }
+
+  // 🔥 simple page intent detection (better than hardcode)
+  const pageIntent =
+    pageHeadings.length > 5 ? "informational" : "transactional";
 
   const intentStatus =
-    serpIntent.intent === "unknown"
-      ? "unknown"
-      : serpIntent.intent === pageIntent
+    serpIntent.intent === pageIntent
       ? "match"
       : "mismatch";
 
-  /* =================================================
-     v4.1 — SECTION EXPECTATION RULES (B + C)
-  ================================================= */
-
-  // 1️⃣ Load expected sections based on intent
+  /* --------------------
+     Section rules
+  -------------------- */
   const expectedSections = getSectionRules(serpIntent.intent);
 
-  // 2️⃣ Match against page headings
   const sectionMatch = matchSections(
     expectedSections,
     pageHeadings
   );
 
-  // 3️⃣ Evaluate with severity
   const sectionEval = evaluateSections(sectionMatch);
 
-  // 4️⃣ Intent-based weighting
-  // Comparison intent → ONLY high-severity sections block ranking
   const weightedMissingSections =
     serpIntent.intent === "comparison"
       ? sectionEval.missingBySeverity.high
       : sectionEval.missing;
 
   /* --------------------
-     Build actions
+     Build actions (FIXED)
   -------------------- */
-  const actions = prioritizeActions({
+  let actions = prioritizeActions({
     intent: { status: intentStatus },
     missingSections: weightedMissingSections.map(s => s.label),
     weakSections: [],
     hasCriticalTechnicalIssues
   });
 
+  // 🔥 fallback action (CRITICAL UX FIX)
+  if (actions.length === 0) {
+    actions = [
+      {
+        priority: 1,
+        action: "Improve content depth and topical coverage",
+        reason: "Page meets baseline structure but lacks competitive depth"
+      }
+    ];
+  }
+
   /* --------------------
-     Confidence
+     Confidence (slightly boosted)
   -------------------- */
   const confidence = resolveConfidence({
     serpLive,
-    intentConfidence: serpIntent.confidence
+    intentConfidence: Math.max(serpIntent.confidence, 0.4)
   });
 
   /* --------------------
-     Final v4 response
+     Final response
   -------------------- */
   return {
     intent: {
