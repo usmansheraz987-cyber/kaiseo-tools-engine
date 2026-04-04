@@ -11,34 +11,12 @@ import {
 import { calculateRelativeScore } from "./scoring/relativeScoring.js";
 import { buildCompetitorInsights } from "./competitors/insights.js";
 
-/* --------------------
-   CACHE + QUOTA
--------------------- */
+/* -------------------- */
 const SERP_CACHE_TTL = 24 * 60 * 60 * 1000;
 const serpCache = new Map();
 
-const MAX_SERP_CALLS_PER_HOUR = 200;
-let serpCalls = 0;
-let serpWindowStart = Date.now();
-
-function canUseSerpQuota() {
-  const now = Date.now();
-
-  if (now - serpWindowStart > 60 * 60 * 1000) {
-    serpCalls = 0;
-    serpWindowStart = now;
-  }
-
-  return serpCalls < MAX_SERP_CALLS_PER_HOUR;
-}
-
-/* ==================== */
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   try {
-    if (!url) throw new Error("URL required");
-    if (!primaryQuery) throw new Error("primaryQuery required");
-
-    /* ---------- V2 ---------- */
     const v2Result = await runSeoAnalyzerV2({ url });
     const extracted = v2Result?.data?.extracted || {};
 
@@ -47,7 +25,6 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       paragraphCount: extracted.paragraphCount || 0
     };
 
-    /* ---------- SERP ---------- */
     let serpBenchmarks;
     let competitors = [];
     let usedFallback = false;
@@ -60,11 +37,7 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       competitors = cached.competitors;
     } else {
       try {
-        if (!canUseSerpQuota() || !canCallSerp()) {
-          throw new Error("SERP_BLOCKED");
-        }
-
-        serpCalls++;
+        if (!canCallSerp()) throw new Error("SERP_BLOCKED");
 
         const serpData = await fetchSerpResults(primaryQuery);
 
@@ -88,7 +61,17 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       }
     }
 
-    /* ---------- SCORING ---------- */
+    /* 🔥 CRITICAL FIX */
+    let serpTitles = competitors.map(c => c.title).filter(Boolean);
+
+    if (!serpTitles.length) {
+      serpTitles = [
+        `what is ${primaryQuery}`,
+        `how to choose ${primaryQuery}`,
+        `best ${primaryQuery}`
+      ];
+    }
+
     const relativeScore = calculateRelativeScore({
       pageContent: contentSignals,
       serpBenchmarks,
@@ -101,10 +84,6 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
       pageContent: contentSignals
     });
 
-    /* ---------- SERP TITLES BRIDGE ---------- */
-    const serpTitles = competitors.map(c => c.title).filter(Boolean);
-
-    /* ---------- FINAL ---------- */
     return {
       ...v2Result.data,
 

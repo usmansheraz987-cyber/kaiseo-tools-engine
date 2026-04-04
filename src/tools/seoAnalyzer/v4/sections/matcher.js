@@ -5,6 +5,17 @@ function normalize(text) {
     .trim();
 }
 
+function isSemanticMatch(heading) {
+  return (
+    heading.includes("what") ||
+    heading.includes("introduction") ||
+    heading.includes("overview") ||
+    heading.includes("guide") ||
+    heading.includes("explained") ||
+    heading.includes("basics")
+  );
+}
+
 export function matchSections(expectedSections, headings) {
   const normalizedHeadings = headings.map(h => normalize(h));
 
@@ -12,17 +23,22 @@ export function matchSections(expectedSections, headings) {
   const missing = [];
 
   for (const section of expectedSections) {
-    const found = section.patterns.some(pattern =>
-      normalizedHeadings.some(h =>
-        h.includes(normalize(pattern))
-      )
-    );
+    let found = false;
 
-    if (found) {
-      present.push(section);
-    } else {
-      missing.push(section);
+    for (const heading of normalizedHeadings) {
+      for (const pattern of section.patterns) {
+        const p = normalize(pattern);
+
+        if (heading.includes(p) || isSemanticMatch(heading)) {
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
     }
+
+    if (found) present.push(section);
+    else missing.push(section);
   }
 
   return { present, missing };

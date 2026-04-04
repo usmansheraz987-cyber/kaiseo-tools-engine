@@ -8,31 +8,29 @@ export function prioritizeActions({
   if (intent.status === "mismatch") {
     actions.push({
       priority: 1,
-      action: "Fix search intent mismatch",
+      action: "Rewrite page to match search intent",
       reason:
-        "Your page does not match what Google is ranking for this query"
+        "Google ranks a different type of content for this query"
     });
   }
 
   // Section gaps
   if (missingSections.length) {
-    const highImpact = missingSections.slice(0, 3);
-
     actions.push({
       priority: 2,
-      action: `Add key sections: ${highImpact.join(", ")}`,
+      action: `Add sections: ${missingSections.join(", ")}`,
       reason:
-        "Top-ranking pages consistently include these sections"
+        "These sections improve clarity and align with top-ranking pages"
     });
   }
 
-  // Weak fallback (never empty)
+  // Never return empty
   if (!actions.length) {
     actions.push({
       priority: 3,
       action: "Improve content depth",
       reason:
-        "Your content lacks strong structural signals compared to competitors"
+        "Content lacks strong structural and informational signals"
     });
   }
 

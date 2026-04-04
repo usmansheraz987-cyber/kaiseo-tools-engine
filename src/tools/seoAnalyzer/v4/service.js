@@ -7,7 +7,6 @@ import { resolveConfidence } from "./confidence/confidenceScore.js";
 
 export async function runSeoAnalyzerV4({ v3Result }) {
   try {
-    /* ---------- HEADINGS ---------- */
     const raw =
       v3Result?.extracted?.headings?.structure || {};
 
@@ -19,14 +18,12 @@ export async function runSeoAnalyzerV4({ v3Result }) {
 
     const safeHeadings = Array.isArray(headings) ? headings : [];
 
-    /* ---------- SERP TITLES ---------- */
     let serpTitles = v3Result?.serp?.titles || [];
 
     if (!serpTitles.length) {
       serpTitles = ["what is", "how to", "guide"];
     }
 
-    /* ---------- INTENT ---------- */
     const serpIntentResult = detectSerpIntent(serpTitles);
 
     let intent = {
@@ -38,7 +35,6 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       intent.serp = "informational";
     }
 
-    /* ---------- PAGE INTENT ---------- */
     const text = safeHeadings.join(" ").toLowerCase();
 
     let pageIntent = "informational";
@@ -55,28 +51,23 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     intent.status =
       intent.serp === intent.page ? "match" : "mismatch";
 
-    /* ---------- SECTIONS ---------- */
     const expected = getSectionRules(intent.serp);
     const match = matchSections(expected, safeHeadings);
     const evaluated = evaluateSections(match);
 
-    // UI-ready labels
     const missingLabels = evaluated.missing.map(s => s.label);
     const presentLabels = evaluated.present.map(s => s.label);
 
-    /* ---------- ACTIONS ---------- */
     const actions = prioritizeActions({
       intent,
       missingSections: missingLabels
     });
 
-    /* ---------- CONFIDENCE ---------- */
     const confidence = resolveConfidence({
       serpLive: v3Result?.context?.serpSource === "live",
       intentConfidence: intent.confidence
     });
 
-    /* ---------- SCORE ---------- */
     let score = 100;
 
     if (intent.status === "mismatch") score -= 25;
@@ -91,11 +82,9 @@ export async function runSeoAnalyzerV4({ v3Result }) {
     if (score < 60) level = "weak";
     if (score < 40) level = "critical";
 
-    /* ---------- COMPETITOR INSIGHTS ---------- */
     const topCompetitors =
-      v3Result?.competitors?.slice(0, 3).map(c => c.title) || [];
+      v3Result?.competitors?.slice(0, 3).map(c => c.title);
 
-    /* ---------- FINAL ---------- */
     return {
       intent,
       sections: {
@@ -105,7 +94,10 @@ export async function runSeoAnalyzerV4({ v3Result }) {
       },
       actions,
       insights: {
-        topCompetitors
+        topCompetitors:
+          topCompetitors?.length
+            ? topCompetitors
+            : ["No live SERP data (fallback mode)"]
       },
       confidence,
       competitive: {
