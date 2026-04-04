@@ -53,11 +53,17 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     -------------------- */
     const v2Result = await runSeoAnalyzerV2({ url });
 
-    // ✅ FIXED PATH
-    const contentSignals = v2Result?.data?.extracted?.content;
+    const extracted = v2Result?.data?.extracted || {};
 
-    if (!contentSignals) {
-      throw new Error("Content signals missing from v2 analysis");
+    // ✅ SAFE CONTENT SIGNALS (FIXED)
+    const contentSignals = {
+      cleanWordCount: extracted.cleanWordCount || 0,
+      paragraphCount: extracted.paragraphCount || 0
+    };
+
+    // 🚨 NEVER CRASH — just warn
+    if (!contentSignals.cleanWordCount) {
+      console.warn("⚠️ Missing cleanWordCount from v2");
     }
 
     /* --------------------
@@ -94,6 +100,8 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
         });
 
       } catch (err) {
+        console.warn("SERP FALLBACK USED:", err.message);
+
         recordSerpFailure();
         usedFallback = true;
 
@@ -121,10 +129,10 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     });
 
     /* --------------------
-       5️⃣ FINAL RETURN (FIXED)
+       5️⃣ FINAL RETURN (CLEAN STRUCTURE)
     -------------------- */
     return {
-      ...v2Result.data, // ✅ FIXED
+      ...v2Result.data,
 
       context: {
         query: primaryQuery,
