@@ -12,9 +12,6 @@ import { calculateRelativeScore } from "./scoring/relativeScoring.js";
 import { buildCompetitorInsights } from "./competitors/insights.js";
 
 /* -------------------- */
-const SERP_CACHE_TTL = 24 * 60 * 60 * 1000;
-const serpCache = new Map();
-
 export async function runSeoAnalyzerV3({ url, primaryQuery }) {
   try {
     const v2Result = await runSeoAnalyzerV2({ url });
@@ -29,39 +26,37 @@ export async function runSeoAnalyzerV3({ url, primaryQuery }) {
     let competitors = [];
     let usedFallback = false;
 
-    const cacheKey = primaryQuery.toLowerCase();
-    const cached = serpCache.get(cacheKey);
-
-    if (cached && Date.now() - cached.time < SERP_CACHE_TTL) {
-      serpBenchmarks = cached.serpBenchmarks;
-      competitors = cached.competitors;
-    } else {
-      try {
-        if (!canCallSerp()) throw new Error("SERP_BLOCKED");
-
-        const serpData = await fetchSerpResults(primaryQuery);
-
-        recordSerpSuccess();
-
-        serpBenchmarks = serpData.benchmarks;
-        competitors = serpData.competitors;
-
-        serpCache.set(cacheKey, {
-          time: Date.now(),
-          serpBenchmarks,
-          competitors
-        });
-
-      } catch (err) {
-        recordSerpFailure();
-        usedFallback = true;
-
-        serpBenchmarks = getIntentBenchmarks(primaryQuery);
-        competitors = [];
+    try {
+      if (!canCallSerp()) {
+        throw new Error("SERP_BLOCKED_BY_GUARD");
       }
+
+      console.log("🔍 Calling SERP API for:", primaryQuery);
+
+      const serpData = await fetchSerpResults(primaryQuery);
+
+      console.log("✅ SERP RAW RESPONSE:", serpData);
+
+      if (!serpData || !Array.isArray(serpData.competitors)) {
+        throw new Error("INVALID_SERP_RESPONSE");
+      }
+
+      recordSerpSuccess();
+
+      serpBenchmarks = serpData.benchmarks || {};
+      competitors = serpData.competitors;
+
+    } catch (err) {
+      console.error("🚨 SERP FAILED:", err.message);
+
+      recordSerpFailure();
+      usedFallback = true;
+
+      serpBenchmarks = getIntentBenchmarks(primaryQuery);
+      competitors = [];
     }
 
-    /* 🔥 CRITICAL FIX */
+    /* 🔥 ALWAYS PROVIDE TITLES */
     let serpTitles = competitors.map(c => c.title).filter(Boolean);
 
     if (!serpTitles.length) {

@@ -1,30 +1,43 @@
 import fetch from "node-fetch";
 
 export async function fetchSerpResults(query) {
-  console.log("SERP API CALLED");
+  const API_KEY = process.env.SERPER_API_KEY;
 
-  if (!process.env.SERP_API_KEY) {
-    throw new Error("SERP_API_KEY_MISSING");
+  if (!API_KEY) {
+    throw new Error("SERPER_API_KEY_MISSING");
   }
 
-  const url = `https://serpapi.com/search.json?q=${encodeURIComponent(
-    query
-  )}&engine=google&num=10&api_key=${process.env.SERP_API_KEY}`;
+  const res = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": API_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      q: query,
+      num: 10
+    })
+  });
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("SERP_API_FAILED");
+  if (!res.ok) {
+    throw new Error(`SERP_API_ERROR_${res.status}`);
+  }
 
   const data = await res.json();
-  const organic = data.organic_results || [];
+
+  console.log("📦 SERP API RESPONSE:", data);
+
+  const competitors = (data.organic || []).map(item => ({
+    title: item.title,
+    url: item.link
+  }));
+
+  if (!competitors.length) {
+    throw new Error("NO_ORGANIC_RESULTS");
+  }
 
   return {
-    benchmarks: {
-      medianWordCount: 1800,
-      medianParagraphCount: 20
-    },
-    competitors: organic.slice(0, 3).map(r => ({
-      title: r.title,
-      url: r.link
-    }))
+    benchmarks: {},
+    competitors
   };
 }
